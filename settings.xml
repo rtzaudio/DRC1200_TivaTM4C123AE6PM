@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cdtprojectproperties>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.IncludePaths">
+<language name="Assembly Source File">
+<includepath workspace_path="true">/${ProjName}</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/TivaWare_C_Series-2.1.1.71b</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/bios_6_45_01_29/packages/ti/sysbios/posix</includepath>
+<includepath>${CG_TOOL_ROOT}/include</includepath>
+
+</language>
+<language name="C++ Source File">
+<includepath workspace_path="true">/${ProjName}</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/TivaWare_C_Series-2.1.1.71b</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/bios_6_45_01_29/packages/ti/sysbios/posix</includepath>
+<includepath>${CG_TOOL_ROOT}/include</includepath>
+
+</language>
+<language name="Assembly Source File">
+<includepath workspace_path="true">/${ProjName}</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/TivaWare_C_Series-2.1.1.71b</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/bios_6_45_01_29/packages/ti/sysbios/posix</includepath>
+<includepath>${CG_TOOL_ROOT}/include</includepath>
+
+</language>
+<language name="C Source File">
+<includepath workspace_path="true">/${ProjName}</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/TivaWare_C_Series-2.1.1.71b</includepath>
+<includepath>${COM_TI_RTSC_TIRTOSTIVAC_INSTALL_DIR}/products/bios_6_45_01_29/packages/ti/sysbios/posix</includepath>
+<includepath>${CG_TOOL_ROOT}/include</includepath>
+
+</language>
+<language name="Linker Command File">
+
+</language>
+<language name="Linker Command File">
+
+</language>
+<language name="Linker Command File">
+
+</language>
+</section>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.Macros">
+<language name="Assembly Source File">
+<macro>
+<name>ccs</name><value/>
+</macro>
+<macro>
+<name>PART_TM4C123GH6PM</name><value/>
+</macro>
+<macro>
+<name>TIVAWARE</name><value/>
+</macro>
+
+</language>
+<language name="C++ Source File">
+<macro>
+<name>ccs</name><value/>
+</macro>
+<macro>
+<name>PART_TM4C123GH6PM</name><value/>
+</macro>
+<macro>
+<name>TIVAWARE</name><value/>
+</macro>
+
+</language>
+<language name="Assembly Source File">
+<macro>
+<name>ccs</name><value/>
+</macro>
+<macro>
+<name>PART_TM4C123GH6PM</name><value/>
+</macro>
+<macro>
+<name>TIVAWARE</name><value/>
+</macro>
+
+</language>
+<language name="C Source File">
+<macro>
+<name>ccs</name><value/>
+</macro>
+<macro>
+<name>PART_TM4C123GH6PM</name><value/>
+</macro>
+<macro>
+<name>TIVAWARE</name><value/>
+</macro>
+
+</language>
+<language name="Linker Command File">
+
+</language>
+<language name="Linker Command File">
+
+</language>
+<language name="Linker Command File">
+
+</language>
+</section>
+</cdtprojectproperties>
