@@ -66,7 +66,7 @@ SYSDATA  g_sysData;
 
 /* Static Function Prototypes */
 Int main();
-Void MainPollTask(UArg a0, UArg a1);
+Void MainButtonTask(UArg a0, UArg a1);
 bool ReadSerialNumber(uint8_t ui8SerialNumber[16]);
 
 //*****************************************************************************
@@ -130,7 +130,7 @@ Int main()
 
     Error_init(&eb);
 
-    task = Task_create(MainPollTask, NULL, &eb);
+    task = Task_create(MainButtonTask, NULL, &eb);
 
     if (task == NULL) {
         System_printf("Task_create() failed!\n");
@@ -146,7 +146,7 @@ Int main()
 //
 //*****************************************************************************
 
-Void MainPollTask(UArg a0, UArg a1)
+Void MainButtonTask(UArg a0, UArg a1)
 {
     System_printf("enter taskFxn()\n");
 
