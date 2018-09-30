@@ -16,24 +16,10 @@ to the MM-1200 transport. It requires the DTC-1200 transport controller
 to perform the basic transport functions. The DRC-1200 is a remote wired
 controller that uses RS-422 and the communications interface to the machine.
 
-### Known Issues
-
-If you discover any bugs, feel free to create an issue on GitHub fork and
-send us a pull request.
-
 
 ## Authors
 
 * Bob Starr (https://github.com/rtzaudio)
-
-
-## Contributing
-
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
 
 
 ## License
