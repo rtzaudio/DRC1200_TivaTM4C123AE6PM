@@ -59,13 +59,13 @@ extern "C" {
 #define Board_SPI_U10               DRC1200_SPI1			// SSI-1 : U10 SPI MCP23S17SO LED Driver and Transport Switches
 #define Board_SPI_U11               DRC1200_SPI0			// SSI-0 : U11 SPI MCP23S17SO LED Drivers
 
-#define Board_UART_RS422            DRC1200_UART0			// RS-422 driver on UART0
+#define Board_UART_RS422_REMOTE     DRC1200_UART0			// RS-422 driver on UART0
 
 #define Board_GPIO_LED1				DRC1200_GPIO_LED1		// LED1 on display card
 #define Board_GPIO_LED2				DRC1200_GPIO_LED2		// LED2 on display card
 #define Board_GPIO_JOGSW			DRC1200_GPIO_JOGSW		// Jog wheel encoder push switch
-#define Board_GPIO_RS422_RE			DRC1200_GPIO_RS422_RE	// RS422 Receiver Enable
-#define Board_GPIO_RS422_DE			DRC1200_GPIO_RS422_DE	// RS422 Transmitter Enable
+#define Board_RS422_RE_N			DRC1200_GPIO_RS422_RE	// RS422 Receiver Enable
+#define Board_RS422_DE			    DRC1200_GPIO_RS422_DE	// RS422 Transmitter Enable
 
 #define Board_GPIO_U7_INTA			DRC1200_GPIO_U7_INTA	// MCP23S17T I/O Expander Interrupt
 #define Board_GPIO_U7_INTB			DRC1200_GPIO_U7_INTB	// MCP23S17T I/O Expander Interrupt

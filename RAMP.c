@@ -59,9 +59,11 @@
 #include <ctype.h>
 #include <stdbool.h>
 
+#include <grlib/grlib.h>
+#include "drivers/offscrmono.h"
+
 /* PMX42 Board Header file */
 #include "Board.h"
-#include "DRC1200.h"
 #include "RAMP.h"
 
 /* Static Function Prototypes */
@@ -69,86 +71,103 @@
 static uint16_t CRC16Update(uint16_t crc, uint8_t data);
 
 //*****************************************************************************
-// Initalize FCB structure to default values
+// Initialize FCB structure to default values
 //*****************************************************************************
 
-void RAMP_InitFcb(FCB* fcb)
+void RAMP_InitFcb(RAMP_FCB* fcb)
 {
-	fcb->type    = TYPE_MSG_ONLY;
+	fcb->type    = MAKETYPE(0, TYPE_MSG_ONLY);
 	fcb->seqnum  = MIN_SEQ_NUM;
 	fcb->acknak  = 0;
 	fcb->address = 0;
-	fcb->textlen = 0;
-	fcb->textbuf = NULL;
 }
 
 //*****************************************************************************
 // Transmit a RAMP frame of data out the RS-422 port
 //*****************************************************************************
 
-int RAMP_FrameTx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int textlen)
+int RAMP_TxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen)
 {
-    int i;
 	uint8_t b;
-    uint8_t *p;
+	uint8_t type;
+    uint16_t i;
+    uint16_t framelen;
     uint16_t crc = 0;
+    uint8_t *textbuf = (uint8_t*)text;
 
-    /* Are we sending an ACK/NAK only frame? */
-    if ((fcb->type == 0x011) || (fcb->type == 0x012))
+	/* First check the text length is valid */
+	if (textlen > MAX_TEXT_LEN)
+		return ERR_TEXT_LEN;
+
+    /* Get the frame type less any flag bits */
+    type = (fcb->type & FRAME_TYPE_MASK);
+
+    /* Are we sending a ACK or NAK only frame? */
+    if ((type == TYPE_ACK_ONLY) || (type == TYPE_NAK_ONLY))
     {
-		fcb->textlen   = 0;
-		fcb->framelen  = ACK_FRAME_LEN;
+        textbuf = NULL;
+        textlen = 0;
+
+        framelen = ACK_FRAME_LEN;
+
+		/* Set the ACK/NAK flag bit */
+		fcb->type |= F_ACKNAK;
     }
     else
     {
-		fcb->textlen   = textlen;
-		fcb->framelen  = textlen + (FRAME_OVERHEAD - PREAMBLE_OVERHEAD);
-		fcb->textbuf   = textbuf;
+        framelen = textlen + (FRAME_OVERHEAD - PREAMBLE_OVERHEAD);
+
+        /* If message is piggyback ACK/NAK, set flag bit also */
+        if ((type == TYPE_MSG_ACK) || (type == TYPE_MSG_NAK))
+            fcb->type |= F_ACKNAK;
+        else
+            fcb->type &= ~(F_ACKNAK);
     }
 
-    /* Send the Preamble MSB for the frame start */
+    /* Send the preamble MSB for the frame start */
     b = PREAMBLE_MSB;
     UART_write(handle, &b, 1);
 
-    /* Send the Preamble LSB for the frame start */
+    /* Send the preamble LSB for the frame start */
     b = PREAMBLE_LSB;
     UART_write(handle, &b, 1);
 
-    /* CRC starts here, sum in the phantom byte first to prime things */
-    crc = CRC16Update(crc, CRC_PHANTOM_BYTE);
+    /* CRC starts here, sum in the seed byte first */
+    crc = CRC16Update(crc, CRC_SEED_BYTE);
 
-    /* Send the Frame length (MSB) */
-    b = (uint8_t)((fcb->framelen >> 8) & 0xFF);
+    /* Send the frame length (MSB) */
+    b = (uint8_t)((framelen >> 8) & 0xFF);
     crc = CRC16Update(crc, b);
     UART_write(handle, &b, 1);
 
-    /* Send the Frame length (LSB) */
-    b = (uint8_t)(fcb->framelen & 0xFF);
+    /* Send the frame length (LSB) */
+    b = (uint8_t)(framelen & 0xFF);
     crc = CRC16Update(crc, b);
     UART_write(handle, &b, 1);
 
-    /* Send the Frame Type Byte */
+    /* Send the frame type & flags byte */
     b = (uint8_t)(fcb->type & 0xFF);
     crc = CRC16Update(crc, b);
     UART_write(handle, &b, 1);
 
-    /* Send the Frame Address Byte */
+    /* Send the frame address byte */
     b = (uint8_t)(fcb->address & 0xFF);
     crc = CRC16Update(crc, b);
     UART_write(handle, &b, 1);
 
-    /* Check for ACK or NAK only frame (always 11H or 12H) */
+    /* Sending ACK or NAK only frame? */
 
-    if ((fcb->type == 0x011) || (fcb->type == 0x012))
+    if ((type == TYPE_ACK_ONLY) || (type == TYPE_NAK_ONLY))
     {
-		/* Send the ACK/NAK Sequence Number */
+		/* Sending ACK/NAK frame only  */
+
 		b = (uint8_t)(fcb->acknak & 0xFF);
 		crc = CRC16Update(crc, b);
 		UART_write(handle, &b, 1);
     }
     else
     {
-    	/* We're sending a full RAMP frame, continue endcoding the rest of the frame */
+    	/* Continue sending a full RAMP frame */
 
 		/* Send the Frame Sequence Number */
 		b = (uint8_t)(fcb->seqnum & 0xFF);
@@ -161,24 +180,22 @@ int RAMP_FrameTx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int textlen)
 		UART_write(handle, &b, 1);
 
 		/* Send the Text length (MSB) */
-		b = (uint8_t)((fcb->textlen >> 8) & 0xFF);
+		b = (uint8_t)((textlen >> 8) & 0xFF);
 		crc = CRC16Update(crc, b);
 		UART_write(handle, &b, 1);
 
 		/* Send the Text length (LSB) */
-		b = (uint8_t)(fcb->textlen & 0xFF);
+		b = (uint8_t)(textlen & 0xFF);
 		crc = CRC16Update(crc, b);
 		UART_write(handle, &b, 1);
 
-		/* Send any Text data associated with the frame */
+		/* Send any text data associated with the frame */
 
-		if (fcb->textbuf && fcb->textlen)
+		if (textbuf && textlen)
 		{
-			p = fcb->textbuf;
-
-			for (i=0; i < fcb->textlen; i++)
+			for (i=0; i < textlen; i++)
 			{
-				b = *p++;
+				b = *textbuf++;
 				crc = CRC16Update(crc, b);
 				UART_write(handle, &b, 1);
 			}
@@ -193,63 +210,54 @@ int RAMP_FrameTx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int textlen)
     b = (uint8_t)(crc & 0xFF);
     UART_write(handle, &b, 1);
 
-    return 0;
+    return ERR_SUCCESS;
 }
 
 //*****************************************************************************
 // Receive a RAMP data frame from the RS-422 port
 //*****************************************************************************
 
-int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen)
+int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen)
 {
     int i;
-	int rc;
+	int rc = ERR_SUCCESS;
+	uint8_t b;
+    uint8_t type;
     uint16_t lsb;
     uint16_t msb;
-	uint8_t b;
-    uint8_t *p;
+    uint16_t framelen;
+    uint16_t rxcrc;
     uint16_t crc = 0;
+    uint8_t *textbuf = (uint8_t*)text;
 
-    /* Save the receive text buffer pointer */
-    fcb->textbuf = textbuf;
+    /* First, try to synchronize to 0x89 SOF byte */
 
-    i = rc = 0;
-
-    /* Attempt to sync on the first preamble byte */
+    i = 0;
 
     do {
-        /* Read the Preamble MSB for the frame start */
-        if (UART_read(handle, &b, 1) != 1)
-        	return ERR_TIMEOUT;
 
-        /* Exit if no preamble byte encountered
-         * for the maximum frame size supported.
-         */
-        if (++i > MAX_FRAME_LEN) {
-        	//System_printf("Preamble1 Not Found!\n");
-        	//System_flush();
-        	return ERR_NO_PREAMBLE;
-        }
+        /* Read the preamble MSB for the frame start */
+        if (UART_read(handle, &b, 1) != 1)
+            return ERR_TIMEOUT;
+
+        /* Garbage flood check, synch lost?? */
+        if (i++ > (FRAME_OVERHEAD + PREAMBLE_OVERHEAD + MAX_TEXT_LEN))
+            return ERR_SYNC;
+
     } while (b != PREAMBLE_MSB);
 
-	/* DEBUG - Rx begin, turn the LED on */
-	GPIO_write(Board_GPIO_LED1, Board_LED_ON);
+    /* We found the first 0x89 sequence, next byte
+     * has to be 0xFC for a valid SOF sequence.
+     */
 
-    /* Read the Preamble LSB for the frame start */
-    if (UART_read(handle, &b, 1) != 1) {
-    	//System_printf("Timeout reading Preamble2\n");
-    	//System_flush();
-    	return ERR_TIMEOUT;
-    }
+    if (UART_read(handle, &b, 1) != 1)
+        return ERR_TIMEOUT;
 
-    if (b != PREAMBLE_LSB) {
-    	//System_printf("Bad Preamble2 %02x\n", b);
-    	//System_flush();
-    	return ERR_BAD_PREAMBLE;
-    }
+    if (b != PREAMBLE_LSB)
+        return ERR_SYNC;
 
-    /* CRC starts here, sum in the phantom byte first to prime things */
-    crc = CRC16Update(crc, CRC_PHANTOM_BYTE);
+    /* CRC starts here, sum in the seed byte first */
+    crc = CRC16Update(crc, CRC_SEED_BYTE);
 
     /* Read the Frame length (MSB) */
     if (UART_read(handle, &b, 1) != 1)
@@ -266,9 +274,9 @@ int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen)
     lsb = (uint16_t)b;
 
     /* Build and validate maximum frame length */
-    fcb->framelen = (size_t)((msb << 8) | lsb) & 0xFFFF;
+    framelen = (size_t)((msb << 8) | lsb) & 0xFFFF;
 
-    if (fcb->framelen > MAX_FRAME_LEN)
+    if (framelen > MAX_FRAME_LEN)
     	return ERR_FRAME_LEN;
 
     /* Read the Frame Type Byte */
@@ -287,7 +295,10 @@ int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen)
 
     /* Check for ACK/NAK only frame (type always 11H or 12H) */
 
-    if ((fcb->framelen == ACK_FRAME_LEN) && ((fcb->type == 0x011) || (fcb->type == 0x012)))
+	/* Get the frame type less any flag bits */
+    type = (fcb->type & FRAME_TYPE_MASK);
+
+    if ((framelen == ACK_FRAME_LEN) && ((type == TYPE_ACK_ONLY) || (type == TYPE_NAK_ONLY)))
     {
 		/* Read the ACK/NAK Sequence Number */
 		if (UART_read(handle, &b, 1) != 1)
@@ -329,24 +340,27 @@ int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen)
 		lsb = (uint16_t)b;
 
 		/* Get the frame length received and validate it */
-		fcb->textlen = (size_t)((msb << 8) | lsb) & 0xFFFF;
-
-		/* Check the text length is not above our maximum payload size */
-		if (fcb->textlen > MAX_TEXT_LEN)
-			return ERR_TEXT_LEN;
+		uint16_t rxtextlen = (size_t)((msb << 8) | lsb) & 0xFFFF;
 
 		/* The text length should be the frame overhead minus the preamble overhead
 		 * plus the text length specified in the received frame. If these don't match
 		 * then we have either a packet data error or a malformed packet.
 		 */
-		if (fcb->textlen + (FRAME_OVERHEAD - PREAMBLE_OVERHEAD) != fcb->framelen)
+		if (rxtextlen + (FRAME_OVERHEAD - PREAMBLE_OVERHEAD) != framelen)
 			return ERR_TEXT_LEN;
+
+		/* If it's a user defined message, then it's a display buffer frame
+		 * and we read the data directly into the display memory buffer.
+		 */
+		if (type == TYPE_MSG_USER)
+		{
+            textbuf = GrGetScreenBuffer();
+            textlen = GrGetScreenBufferSize();
+		}
 
 		/* Read text data associated with the frame */
 
-		p = fcb->textbuf;
-
-		for (i=0; i < fcb->textlen; i++)
+		for (i=0; i < rxtextlen; i++)
 		{
 			if (UART_read(handle, &b, 1) != 1)
 				return ERR_SHORT_FRAME;
@@ -354,14 +368,17 @@ int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen)
 			/* update the CRC */
 			crc = CRC16Update(crc, b);
 
-			if (i >= maxlen)
+			/* If we overflow, continue reading the packet
+			 * data, but don't store the data into the buffer.
+			 */
+			if (i >= textlen)
 			{
 				rc = ERR_RX_OVERFLOW;
 				continue;
 			}
 
-			if (p)
-				*p++ = b;
+			if (textbuf)
+				*textbuf++ = b;
 		}
     }
 
@@ -378,13 +395,13 @@ int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen)
     lsb = (uint16_t)b & 0xFF;
 
     /* Build and validate the CRC */
-    fcb->crc = (uint16_t)((msb << 8) | lsb) & 0xFFFF;
+    rxcrc = (uint16_t)((msb << 8) | lsb) & 0xFFFF;
 
     /* Validate the CRC values match */
-    if (fcb->crc != crc)
+    if (rxcrc != crc)
     	rc = ERR_CRC;
 
-     return rc;
+    return rc;
 }
 
 //*****************************************************************************

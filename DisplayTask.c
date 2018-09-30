@@ -87,38 +87,109 @@ uint32_t s_uScreenNum = 0;
 static int GetHexStr(char* pTextBuf, uint8_t* pDataBuf, int len);
 
 //*****************************************************************************
+// OLED Display Drawing task
+//*****************************************************************************
+
+Void DisplayTask(UArg arg0, UArg arg1)
+{
+    uint32_t secs = 0;
+    bool screensave = FALSE;
+    DisplayMessage msg;
+
+    ClearDisplay();
+
+    DisplayWelcome();
+
+    Task_sleep(2000);
+
+    while (true)
+    {
+    	/* Wait for a message up to 1 second */
+        if (!Mailbox_pend(g_mailboxDisplay, &msg, 1000))
+        {
+        	/* No message, blink the LED */
+    		GPIO_toggle(Board_GPIO_LED1);
+
+    		/* Check for display sleep timeout */
+    		if (++secs >= 60)
+    		{
+    			/* power down and put the display in sleep mode */
+    			FEMA128x64Sleep();
+    			secs = 0;
+    			screensave = TRUE;
+    		}
+
+        	continue;
+        }
+
+        /* Reset the screen saver timeout */
+		secs = 0;
+
+        /* Check if screen saver is active */
+		if (screensave)
+		{
+			screensave = FALSE;
+			/* Wakeup the screen and power it up */
+			FEMA128x64Wake();
+		}
+
+		switch(msg.dispCommand)
+		{
+		case REFRESH:
+		    GrFlush(&g_context);
+		    break;
+
+		case WAKE:
+            secs = 0;
+            screensave = TRUE;
+            FEMA128x64Wake();
+		    break;
+
+        case SLEEP:
+            secs = 0;
+            screensave = FALSE;
+            FEMA128x64Sleep();
+            break;
+
+        default:
+            break;
+        }
+    }
+}
+
+//*****************************************************************************
 // Format a data buffer into an ascii hex string.
 //*****************************************************************************
 
 int GetHexStr(char* pTextBuf, uint8_t* pDataBuf, int len)
 {
-	char fmt[8];
-	uint32_t i;
-	int32_t	l;
+    char fmt[8];
+    uint32_t i;
+    int32_t l;
 
-	*pTextBuf = 0;
-	strcpy(fmt, "%02X");
+    *pTextBuf = 0;
+    strcpy(fmt, "%02X");
 
-	for (i=0; i < len; i++)
-	{
-		l = sprintf(pTextBuf, fmt, *pDataBuf++);
-		pTextBuf += l;
+    for (i=0; i < len; i++)
+    {
+        l = sprintf(pTextBuf, fmt, *pDataBuf++);
+        pTextBuf += l;
 
-		if (((i % 2) == 1) && (i != (len-1)))
-		{
-			l = sprintf(pTextBuf, "-");
-			pTextBuf += l;
-		}
-	}
+        if (((i % 2) == 1) && (i != (len-1)))
+        {
+            l = sprintf(pTextBuf, "-");
+            pTextBuf += l;
+        }
+    }
 
-	return strlen(pTextBuf);
+    return strlen(pTextBuf);
 }
 
 //*****************************************************************************
 //
 //*****************************************************************************
 
-void ClearDisplay()
+void ClearDisplay(void)
 {
     tRectangle rect = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
     GrContextForegroundSetTranslated(&g_context, 0);
@@ -130,29 +201,29 @@ void ClearDisplay()
 //
 //*****************************************************************************
 
-void DisplayWelcome()
+void DisplayWelcome(void)
 {
-	int len;
-	char buf[64];
+    int len;
+    char buf[64];
 
-	/* Set foreground pixel color on to 0x01 */
-	GrContextForegroundSetTranslated(&g_context, 1);
-	GrContextBackgroundSetTranslated(&g_context, 0);
+    /* Set foreground pixel color on to 0x01 */
+    GrContextForegroundSetTranslated(&g_context, 1);
+    GrContextBackgroundSetTranslated(&g_context, 0);
 
     //tRectangle rect = {0, 0, SCREEN_WIDTH-1, SCREEN_HEIGHT-1};
     //GrRectDraw(&g_context, &rect);
 
     /* Setup font */
-	uint32_t y;
-	uint32_t height;
-	uint32_t spacing = 2;
+    uint32_t y;
+    uint32_t height;
+    uint32_t spacing = 2;
 
     /* Display the program version/revision */
-	GrContextFontSet(&g_context, g_psFontCm28b);
+    GrContextFontSet(&g_context, g_psFontCm28b);
     height = GrStringHeightGet(&g_context);
     y = 12;
     len = sprintf(buf, "DRC-1200");
-	GrStringDrawCentered(&g_context, buf, len, SCREEN_WIDTH/2, y, FALSE);
+    GrStringDrawCentered(&g_context, buf, len, SCREEN_WIDTH/2, y, FALSE);
     y += (height/2) + 4;
 
     /* Switch to fixed system font */
@@ -174,206 +245,6 @@ void DisplayWelcome()
     y += height + spacing;
 
     GrFlush(&g_context);
-}
-
-//*****************************************************************************
-// Display the curreent measurement screen data
-//*****************************************************************************
-
-#define LAST_SCREEN		1
-
-void DrawScreen(uint32_t uScreenNum)
-{
-	char buf[64];
-	int len;
-	uint32_t y = 0;
-	uint32_t height;
-	uint32_t width;
-	uint32_t spacing = 0;
-
-	static uint32_t hours, mins, secs;
-
-    //tRectangle rect;
-
-	ClearDisplay();
-
-	/* Set foreground pixel color on to 0x01 */
-	GrContextForegroundSetTranslated(&g_context, 1);
-	GrContextBackgroundSetTranslated(&g_context, 0);
-
-    switch(uScreenNum)
-    {
-		/* Display Normal Tape Time Screen */
-		case 0:
-		    /* Top line fixed system font in inverse */
-		    GrContextFontSet(&g_context, g_psFontFixed6x8);
-		    height = GrStringHeightGet(&g_context);
-
-		    /* Inverse Mono */
-			//GrContextForegroundSetTranslated(&g_context, 0);
-			//GrContextBackgroundSetTranslated(&g_context, 1);
-			GrContextForegroundSetTranslated(&g_context, 1);
-			GrContextBackgroundSetTranslated(&g_context, 0);
-
-		    len = sprintf(buf, "STOP");
-			//width = GrStringWidthGet(&g_context, buf, len);
-			GrStringDraw(&g_context, buf, -1, 0, y, 1);
-
-		    len = sprintf(buf, "30ips");
-			width = GrStringWidthGet(&g_context, buf, len);
-			GrStringDraw(&g_context, buf, -1, (SCREEN_WIDTH - 1) - width, y, 1);
-			y += height + spacing;
-
-			/* Normal Mono */
-			GrContextForegroundSetTranslated(&g_context, 1);
-			GrContextBackgroundSetTranslated(&g_context, 0);
-
-			/* Now draw the big digits centered */
-
-			GrContextFontSet(&g_context, g_psFontWDseg7bold24pt);
-			//GrContextFontSet(&g_context, g_psFontCm30b);
-		    height = GrStringHeightGet(&g_context);
-
-		    ++secs;
-		    if (secs >= 60) {
-		    	secs = 0;
-		    	++mins;
-		    }
-		    if (mins >= 60) {
-		    	mins = 0;
-		    	++ hours;
-		    }
-
-		    if (hours >= 99)
-		    	hours = mins = secs = 0;
-
-		    len = sprintf(buf, "%02u:%02u:%02u", hours, mins, secs);
-
-			//GrStringDraw(&g_context, buf, -1, 10, y, 0);
-			GrStringDrawCentered(&g_context, buf, len, SCREEN_WIDTH/2, SCREEN_HEIGHT/2, FALSE);
-			y += height + spacing;
-			break;
-
-		/* 4 Channel Measurement Data */
-		case 1:
-			/* Setup the font and get it's height */
-			GrContextFontSet(&g_context,  g_psFontCmss18b);
-		    height = GrStringHeightGet(&g_context);
-
-			sprintf(buf, "%d.%02d", rand() % 1000 + 1, rand() % 10 + 1);
-			GrStringDraw(&g_context, buf, -1, 0, y, 0);
-
-			sprintf(buf, "%d.%02d", rand() % 1000 + 1, rand() % 10 + 1);
-			GrStringDraw(&g_context, buf, -1, 63, y, 0);
-
-			y += height + spacing;
-
-			sprintf(buf, "%d.%02d", rand() % 1000 + 1, rand() % 10 + 1);
-			GrStringDraw(&g_context, buf, -1, 0, y, 0);
-
-			sprintf(buf, "%d.%02d", rand() % 1000 + 1, rand() % 10 + 1);
-			GrStringDraw(&g_context, buf, -1, 63, y, 0);
-
-			y += height + spacing;
-			break;
-
-		default:
-			break;
-    }
-
-    GrFlush(&g_context);
-}
-
-
-
-//*****************************************************************************
-// OLED Display Drawing task
-//
-// It is pending for the message either from console task or from button ISR.
-// Once the messages received, it draws to the screen based on information
-//  contained in the message.
-//
-//*****************************************************************************
-
-Void DisplayTask(UArg arg0, UArg arg1)
-{
-	//static char lineBuf[65];
-
-    DisplayMessage msg;
-    //unsigned int i = 0;
-    //unsigned int fontHeight;
-
-    //fontHeight = GrStringHeightGet(&g_context);
-    bool screensave = 0;
-    uint32_t secs = 0;
-
-    ClearDisplay();
-
-    DisplayWelcome();
-
-    Task_sleep(2000);
-
-    while (true)
-    {
-    	/* Wait for a message up to 1 second */
-        if (!Mailbox_pend(g_mailboxDisplay, &msg, 1000))
-        {
-        	/* No message, blink the LED */
-    		GPIO_toggle(Board_GPIO_LED1);
-
-    		/* Check for display sleep timeout */
-    		if (++secs >= 60)
-    		{
-    			/* power down and put the display in sleep mode */
-    			//FEMA128x64Sleep();
-    			secs = 0;
-    			//screensave = 1;
-    		}
-
-    		if (!screensave)
-    			DrawScreen(s_uScreenNum);
-
-        	continue;
-        }
-
-        /* Reset the screensaver timeout */
-		secs = 0;
-
-        /* Check if screen saver is active */
-		if (screensave)
-		{
-			screensave = 0;
-			/* Wakeup the screen and power it up */
-			FEMA128x64Wake();
-		}
-
-		switch(msg.dispCommand)
-		{
-        case SETSCREEN:
-        	if (msg.dispArg1 < LAST_SCREEN)
-        		s_uScreenNum = msg.dispArg1;
-        	DrawScreen(s_uScreenNum);
-            break;
-
-        case NEXTSCREEN:
-        	++s_uScreenNum;
-        	if (s_uScreenNum > LAST_SCREEN)
-        		s_uScreenNum = 0;
-        	DrawScreen(s_uScreenNum);
-            break;
-
-        case PREVSCREEN:
-        	if (s_uScreenNum)
-        		--s_uScreenNum;
-        	else if (!s_uScreenNum)
-        		s_uScreenNum = LAST_SCREEN;
-        	DrawScreen(s_uScreenNum);
-            break;
-
-        default:
-            break;
-        }
-    }
 }
 
 // End-Of-File

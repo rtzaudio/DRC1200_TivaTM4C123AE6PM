@@ -18,10 +18,13 @@
 
 /* BIOS Header files */
 #include <ti/sysbios/BIOS.h>
+#include <ti/sysbios/knl/Semaphore.h>
+#include <ti/sysbios/knl/Event.h>
 #include <ti/sysbios/knl/Mailbox.h>
-#include <ti/sysbios/knl/Queue.h>
 #include <ti/sysbios/knl/Task.h>
 #include <ti/sysbios/knl/Clock.h>
+#include <ti/sysbios/knl/Queue.h>
+#include <ti/sysbios/family/arm/m3/Hwi.h>
 
 /* TI-RTOS Driver files */
 #include <ti/drivers/GPIO.h>
@@ -51,7 +54,7 @@
 #include "DRC1200.h"
 #include "IOExpander.h"
 #include "DisplayTask.h"
-#include "RemoteTask.h"
+#include "RAMPServer.h"
 
 /* Mailbox Handles created dynamically */
 
@@ -160,7 +163,10 @@ Void MainButtonTask(UArg a0, UArg a1)
     }
 
     /* Start the remote communications service tasks */
-    RemoteInit();
+    if (RAMP_Server_init())
+    {
+        System_abort("RAMP Init Failed!\n");
+    }
 
     /****************************************************************
      * Enter the main application button processing loop forever.

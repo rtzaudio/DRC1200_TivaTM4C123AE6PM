@@ -1,11 +1,11 @@
 /*
- * Remote Asyncronous Message Protocol
+ * RAMP - Remote Asynchronous Message Protocol
  *
- * Copyright (C) 2016, RTZ Professional Audio, LLC. ALL RIGHTS RESERVED.
+ * Copyright (C) 2016-2018, RTZ Professional Audio, LLC. ALL RIGHTS RESERVED.
  *
  *              *** RAMP Protocol Message Frame Structure ***
  *
- *                    +------------------------------+   byte
+ *                    +------------------------------+   Byte
  *                +-- |    SOF PREAMBLE (MSB=0x89)   |    0
  *                |   +------------------------------+
  *                |   |    SOF PREAMBLE (LSB=0xFC)   |    1
@@ -14,7 +14,7 @@
  *                |   +------------------------------+
  *                +-- |      FRAME LENGTH (LSB)      |    3
  *                    +---+---+---+---+--------------+
- *                +-- | E | R | P | A |    TYPE      |    4
+ *                +-- | E | D | P | A |    TYPE      |    4
  *                |   +---+---+---+---+--------------+
  *                |   |           ADDRESS            |    5
  *       Header --+   +------------------------------+
@@ -32,9 +32,9 @@
  *                |   |              .               |    .
  *                +-- |              .               |    .
  *                    +------------------------------+
- *                +-- |          CRC (MSB)           |  10 + textlen
+ *                +-- |          CRC (MSB)           |   10 + textlen
  *          CRC --+   +------------------------------+
- *                +-- |          CRC (LSB)           |  11 + textlen
+ *                +-- |          CRC (LSB)           |   11 + textlen
  *                    +------------------------------+
  * 
  *    RAMP Frame Contents Description:
@@ -43,16 +43,12 @@
  * 
  *      * Frame length: Total length less preamble (includes CRC bytes)
  * 
- *      * Flags: E=ERROR, R=RESYNC, P=PRIORITY, A=ACK/NAK
+ *      * Flags: E=ERROR, D=DATAGRAM, P=PRIORITY, A=ACK/NAK response required
  *
- *      * Type: 1 = Frame contains ACK-only
- *              2 = Frame contains NAK-only
- *              3 = Frame contains text msg only
- *              4 = Frame contains msg + piggyback ACK
- *              5 = Frame contains msg + piggybackNAK
- *              6 = Frame is Datagram text data only, no ACK req'd
+ *      * Type: 1 = ACK-only           2 = NAK-only           3 = msg-only
+ *              4 = msg+piggyback-ACK  5 = msg+piggyback-NAK
  * 
- *      * Address: Specifies the node address
+ *      * Address: Specifies the remote slave node address (0-16)
  *
  *      * Sequence#: Transmit frame sequence number (1-24)
  *       
@@ -70,7 +66,7 @@
  *                    +------------------------------+   byte
  *                +-- |    SOF PREAMBLE (MSB=0x89)   |    0
  *                |   +------------------------------+
- *                |   |    SOF PREAMBLE (LSB=0xFC)   |    1
+ *                |   |    SOF PREAMBLE (LSB=0xBA)   |    1
  *     Preamble --+   +------------------------------+
  *                |   |     FRAME LENGTH (MSB=0)     |    2
  *                |   +------------------------------+
@@ -95,27 +91,30 @@
  * 
  *      * Type: frame type 1=ACK/2=NAK (always 11H or 12H)
  *
- *      * Address: Specifies the node address
+ *      * Address: Specifies the device node address (0-255)
  *
- *      * ACK/NAK Sequence: ACK/NAK frame sequence# (1-21)
+ *      * ACK/NAK Sequence: ACK/NAK frame sequence#
  *
- *      * CRC value: CRC-16 value calculate from offset 2 to 6
+ *      * CRC value: CRC-16 value calculated from offset 2 to 6
  */
 
-/*** RAMP Contstants and Defines *******************************************/
+#ifndef __RAMP_H
+#define __RAMP_H
+
+/*** RAMP Constants and Defines ********************************************/
 
 #define PREAMBLE_MSB			0x89		/* first byte of preamble SOF  */
-#define PREAMBLE_LSB			0xFC		/* second byte of preamble SOF */
+#define PREAMBLE_LSB			0xBA		/* second byte of preamble SOF */
 
 #define MAX_WINDOW              8       	/* maximum window size         */
 
 #define PREAMBLE_OVERHEAD       4       	/* preamble overhead (SOF+LEN) */
 #define HEADER_OVERHEAD         4       	/* frame header overhead       */
 #define TEXT_OVERHEAD           2       	/* text length overhead        */
-#define CRC_OVERHEAD            2       	/* crc overhead (CRC lsb+msb)  */
+#define CRC_OVERHEAD            2       	/* 16-bit CRC overhead         */
 #define FRAME_OVERHEAD          ( PREAMBLE_OVERHEAD + HEADER_OVERHEAD + TEXT_OVERHEAD + CRC_OVERHEAD )
 
-#define CRC_PHANTOM_BYTE		0x80
+#define CRC_SEED_BYTE		    0xAB
 
 #define MIN_SEQ_NUM             1       	/* min/max frame sequence num   */
 #define MAX_SEQ_NUM             ( 3 * MAX_WINDOW )
@@ -129,9 +128,9 @@
 #define INC_SEQ_NUM(n)		    ( (uint8_t)((n >= MAX_SEQ_NUM) ? MIN_SEQ_NUM : n+1) )
 
 /* Frame Type Flag Bits (upper nibble) */
-#define F_ACKNAK        		0x10		/* ACK/NAK only frame flag bit */
+#define F_ACKNAK        		0x10		/* frame is ACK/NAK only frame */
 #define F_PRIORITY      		0x20    	/* high priority message frame */
-#define F_RESYNC        		0x40		/* resyncronize flag bit       */
+#define F_DATAGRAM        		0x40		/* no ACK/NAK required         */
 #define F_ERROR         		0x80		/* frame error flag bit        */
 
 #define FRAME_FLAG_MASK    		0xF0		/* flag mask is upper 4 bits   */
@@ -142,43 +141,43 @@
 #define TYPE_MSG_ONLY   		3			/* message only frame          */
 #define TYPE_MSG_ACK    		4			/* piggyback message plus ACK  */
 #define TYPE_MSG_NAK    		5			/* piggyback message plus NAK  */
-#define TYPE_DATAGRAM    		8			/* datagram message - dont ACK */
+#define TYPE_MSG_USER           6           /* user defined message packet */
 
 #define FRAME_TYPE_MASK    		0x0F		/* type mask is lower 4 bits   */
 
+#define MAKETYPE(f, t)			( (uint8_t)((f & 0xF0) | (t & 0x0F)) )
+
 /* Error Code Constants */
+#define ERR_SUCCESS             0
 #define ERR_TIMEOUT             1           /* comm port timeout           */
-#define ERR_NO_PREAMBLE         2           /* 1st preamble byte not found */
-#define ERR_BAD_PREAMBLE        3           /* 2nd preamble byte not found */
-#define ERR_SHORT_FRAME         4           /* short rx-frame error        */
-#define ERR_RX_OVERFLOW         5           /* rx buffer overflow          */
-#define ERR_SEQ_NUM             6           /* bad sequence number         */
-#define ERR_FRAME_TYPE          7           /* invalid frame type          */
-#define ERR_FRAME_LEN           8           /* bad rx-frame length         */
-#define ERR_TEXT_LEN            9           /* bad rx-text length          */
-#define ERR_ACKNAK_LEN          10          /* bad rx-text length          */
-#define ERR_CRC                 11          /* rx-frame checksum bad       */
-#define ERR_SYNC                12          /* frame sync error            */
+#define ERR_SYNC                2           /* SOF frame sync error        */
+#define ERR_SHORT_FRAME         3           /* short rx-frame error        */
+#define ERR_RX_OVERFLOW         4           /* rx buffer overflow          */
+#define ERR_SEQ_NUM             5           /* bad sequence number         */
+#define ERR_FRAME_TYPE          6           /* invalid frame type          */
+#define ERR_FRAME_LEN           7           /* bad rx-frame length         */
+#define ERR_TEXT_LEN            8           /* bad rx-text length          */
+#define ERR_ACKNAK_LEN          9           /* bad rx-text length          */
+#define ERR_CRC                 10          /* rx-frame checksum bad       */
 
 /*** RAMP Structure Definitions ********************************************/
 
-/* Frame Control Block Structure */
+/* RAMP Frame Control Block Structure */
 
 typedef struct fcb_t {
     uint8_t     type;               /* frame type bits       */
     uint8_t     seqnum;             /* frame tx/rx seq#      */
     uint8_t     acknak;             /* frame ACK/NAK seq#    */
-    uint8_t     address;            /* source tx/rx address  */
-    uint8_t*	textbuf;            /* pointer to text buf   */
-    uint16_t    textlen;            /* ptr text in frame     */
-    uint16_t    framelen;         	/* frame len specifier   */
-    uint16_t	crc;				/* remotes CRC value     */
-} FCB;
+    uint8_t     address;            /* tx/rx node address    */
+} RAMP_FCB;
 
-/* RAMP Function Prototypes */
+/*** RAMP Function Prototypes **********************************************/
 
-void RAMP_InitFcb(FCB* fcb);
-int RAMP_FrameTx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int textlen);
-int RAMP_FrameRx(UART_Handle handle, FCB *fcb, uint8_t *textbuf, int maxlen);
+void RAMP_InitFcb(RAMP_FCB* fcb);
+
+int RAMP_TxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen);
+int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen);
+
+#endif /* __RAMP_H */
 
 /* end-of-file */

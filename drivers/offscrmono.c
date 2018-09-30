@@ -29,9 +29,20 @@
 
 //*****************************************************************************
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
-#include "driverlib/debug.h"
-#include "grlib/grlib.h"
+#include <driverlib/debug.h>
+#include <grlib/grlib.h>
+
+#include "offscrmono.h"
+
+unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
+
+/* FEMA OLED Display buffer context for grlib */
+tDisplay g_FEMA128x64;
+
+/* Global context for drawing */
+tContext g_context;
 
 //*****************************************************************************
 //
@@ -89,7 +100,6 @@ GrOffScreenMonoPixelDraw(void *pvDisplayData, int32_t i32X, int32_t i32Y,
     // Create a character pointer for the display-specific data (which points
     // to the image buffer). The first 5 bytes of the buffer contain the
     // image format, width & height.
-
     pui8Data = (uint8_t *)pvDisplayData;
 
     // Get the display width info from the video buffer.
@@ -97,7 +107,6 @@ GrOffScreenMonoPixelDraw(void *pvDisplayData, int32_t i32X, int32_t i32Y,
 
     // Calculate the page/column offset to the byte of interest. We skip
     // over the first 5 bytes of display info to the start of image buffer.
-
     pui8Data += (((i32Y/8) * i32Width) + i32X) + 5;
 
     // Turn the bit of interest off and or in the new bit color, if any */
@@ -144,94 +153,6 @@ GrOffScreenMonoPixelDrawMultiple(void *pvDisplayData, int32_t i32X,
                                    const uint8_t *pui8Palette)
 {
 	// NOT IMPLEMENTED!!
-
-#if 0
-    uint8_t *pui8Ptr;
-    uint32_t ui32Byte;
-    int32_t i32BytesPerRow;
-
-    //
-    // Check the arguments.
-    //
-    ASSERT(pvDisplayData);
-    ASSERT(pui8Data);
-    ASSERT(pui8Palette);
-
-    //
-    // Create a character pointer for the display-specific data (which points
-    // to the image buffer).
-    //
-    pui8Ptr = (uint8_t *)pvDisplayData;
-
-    //
-    // Compute the number of bytes per row in the image buffer.
-    //
-    i32BytesPerRow = (*(uint16_t *)(pui8Ptr + 1) + 7) / 8;
-
-    //
-    // Get the offset to the byte of the image buffer that contains the
-    // starting pixel.
-    //
-    pui8Ptr += (i32BytesPerRow * i32Y) + (i32X / 8) + 5;
-
-    //
-    // Determine the bit position of the starting pixel.
-    //
-    i32X = 7 - (i32X & 7);
-
-    //
-    // Determine how to interpret the pixel data based on the number of bits
-    // per pixel.
-    //
-    switch(i32BPP & 0xFF)
-    {
-        //
-        // The pixel data is in 1 bit per pixel format.
-        //
-        case 1:
-        {
-            //
-            // Loop while there are more pixels to draw.
-            //
-            while(i32Count)
-            {
-                //
-                // Get the next byte of image data.
-                //
-                ui32Byte = *pui8Data++;
-
-                //
-                // Loop through the pixels in this byte of image data.
-                //
-                for(; (i32X0 < 8) && i32Count; i32X0++, i32Count--)
-                {
-                    //
-                    // Draw this pixel in the appropriate color.
-                    //
-                    *pui8Ptr = ((*pui8Ptr & ~(1 << i32X)) |
-                               ((((uint32_t *)pui8Palette)[(ui32Byte >>
-                                                                (7 - i32X0)) &
-                                                               1]) << i32X));
-                    if(i32X-- == 0)
-                    {
-                        i32X = 7;
-                        pui8Ptr++;
-                    }
-                }
-
-                //
-                // Start at the beginning of the next byte of image data.
-                //
-                i32X0 = 0;
-            }
-
-            //
-            // The image data has been drawn.
-            //
-            break;
-        }
-    }
-#endif
 }
 
 //*****************************************************************************
@@ -261,146 +182,6 @@ GrOffScreenMonoLineDrawH(void *pvDisplayData, int32_t i32X1, int32_t i32X2,
 	{
 		GrOffScreenMonoPixelDraw(pvDisplayData, x, i32Y, ui32Value);
 	}
-
-
-
-#if 0
-    int32_t i32BytesPerRow, i32Mask;
-    uint8_t *pui8Data;
-
-    //
-    // Check the arguments.
-    //
-    ASSERT(pvDisplayData);
-
-    // Create a character pointer for the display-specific data (which points
-    // to the image buffer). The first 5 bytes of the buffer contain the
-    // image format, width & height.
-
-    pui8Data = (uint8_t *)pvDisplayData;
-
-    // Get the display width info from the video buffer.
-
-    i32Width = *(uint16_t *)(pui8Data + 1);
-
-    // Calculate the page/column offset to the byte of interest. We skip
-    // over the first 5 bytes of display info to the start of image buffer.
-
-    pui8Data += (((i32Y/8) * i32Width) + i32X) + 5;
-
-    //
-    // Copy the pixel value into all 32 pixels of the uint32_t.  This will
-    // be used later to write multiple pixels into memory (as opposed to one at
-    // a time).
-    //
-    if(ui32Value)
-    {
-        ui32Value = 0xffffffff;
-    }
-
-    //
-    // See if the current buffer byte contains pixels that should be left
-    // unmodified.
-    //
-    if(i32X1 & 7)
-    {
-        //
-        // Compute the mask to access only the appropriate pixels within this
-        // byte.  The line may start and stop within this byte, so the mask may
-        // need to be shortened to account for this situation.
-        //
-        i32Mask = 8 - (i32X1 & 7);
-        if(i32Mask > (i32X2 - i32X1 + 1))
-        {
-            i32Mask = i32X2 - i32X1 + 1;
-        }
-        i32Mask = ((1 << i32Mask) - 1) << (8 - (i32X1 & 7) - i32Mask);
-
-        //
-        // Draw the appropriate pixels within this byte.
-        //
-        *pui8Data = (*pui8Data & ~i32Mask) | (ui32Value & i32Mask);
-        pui8Data++;
-        i32X1 = (i32X1 + 7) & ~7;
-    }
-
-    //
-    // See if the buffer pointer is not half-word aligned and there are at
-    // least eight pixels left to draw.
-    //
-    if(((uint32_t)pui8Data & 1) && ((i32X2 - i32X1) > 6))
-    {
-        //
-        // Draw eight pixels to half-word align the buffer pointer.
-        //
-        *pui8Data++ = ui32Value & 0xff;
-        i32X1 += 8;
-    }
-
-    //
-    // See if the buffer pointer is not word aligned and there are at least
-    // sixteen pixels left to draw.
-    //
-    if(((uint32_t)pui8Data & 2) && ((i32X2 - i32X1) > 14))
-    {
-        //
-        // Draw sixteen pixels to word align the buffer pointer.
-        //
-        *(uint16_t *)pui8Data = ui32Value & 0xffff;
-        pui8Data += 2;
-        i32X1 += 16;
-    }
-
-    //
-    // Loop while there are at least thirty two pixels left to draw.
-    //
-    while((i32X1 + 31) <= i32X2)
-    {
-        //
-        // Draw thirty two pixels.
-        //
-        *(uint32_t *)pui8Data = ui32Value;
-        pui8Data += 4;
-        i32X1 += 32;
-    }
-
-    //
-    // See if there are at least sixteen pixels left to draw.
-    //
-    if((i32X1 + 15) <= i32X2)
-    {
-        //
-        // Draw sixteen pixels, leaving the buffer pointer half-word aligned.
-        //
-        *(uint16_t *)pui8Data = ui32Value & 0xffff;
-        pui8Data += 2;
-        i32X1 += 16;
-    }
-
-    //
-    // See if there are at least eight pixels left to draw.
-    //
-    if((i32X1 + 7) <= i32X2)
-    {
-        //
-        // Draw eight pixels, leaving the buffer pointer byte aligned.
-        //
-        *pui8Data++ = ui32Value & 0xff;
-        i32X1 += 8;
-    }
-
-    //
-    // See if there are any pixels left to draw.
-    //
-    if(i32X1 <= i32X2)
-    {
-        //
-        // Draw the remaining pixels.
-        //
-        i32Mask = 0xff >> (i32X2 - i32X1 + 1);
-        *pui8Data = (*pui8Data & i32Mask) | (ui32Value & ~i32Mask);
-    }
-#endif
 }
 
 //*****************************************************************************
@@ -430,57 +211,6 @@ GrOffScreenMonoLineDrawV(void *pvDisplayData, int32_t i32X, int32_t i32Y1,
 	{
 		GrOffScreenMonoPixelDraw(pvDisplayData, i32X, y, ui32Value);
 	}
-
-#if 0
-    uint8_t *pui8Data;
-    int32_t i32BytesPerRow;
-
-    //
-    // Check the arguments.
-    //
-    ASSERT(pvDisplayData);
-
-    //
-    // Create a character pointer for the display-specific data (which points
-    // to the image buffer).
-    //
-    pui8Data = (uint8_t *)pvDisplayData;
-
-    //
-    // Compute the number of bytes per row in the image buffer.
-    //
-    i32BytesPerRow = (*(uint16_t *)(pui8Data + 1) + 7) / 8;
-
-    //
-    // Get the offset to the byte of the image buffer that contains the
-    // starting pixel.
-    //
-    pui8Data += (i32BytesPerRow * i32Y1) + (i32X / 8) + 5;
-
-    //
-    // Determine how much to shift to get to the bit that contains this pixel.
-    //
-    i32X = 7 - (i32X & 7);
-
-    //
-    // Shift the pixel value up to the correct bit position, and create a mask
-    // to preserve the value of the remaining pixels.
-    //
-    ui32Value <<= i32X;
-    i32X = ~(1 << i32X);
-
-    //
-    // Loop over the rows of the line.
-    //
-    for(; i32Y1 <= i32Y2; i32Y1++)
-    {
-        //
-        // Draw this pixel of the line.
-        //
-        *pui8Data = (*pui8Data & i32X) | ui32Value;
-        pui8Data += i32BytesPerRow;
-    }
-#endif
 }
 
 //*****************************************************************************
@@ -513,193 +243,6 @@ GrOffScreenMonoRectFill(void *pvDisplayData, const tRectangle *pRect,
 	    	GrOffScreenMonoPixelDraw(pvDisplayData, x, y, ui32Value);
 		}
     }
-
-#if 0
-    uint8_t *pui8Data, *pui8Column;
-    int32_t i32BytesPerRow, i32Mask, i32X, i32Y;
-
-    //
-    // Check the arguments.
-    //
-    ASSERT(pvDisplayData);
-    ASSERT(pRect);
-
-    //
-    // Create a character pointer for the display-specific data (which points
-    // to the image buffer).
-    //
-    pui8Data = (uint8_t *)pvDisplayData;
-
-    //
-    // Compute the number of bytes per row in the image buffer.
-    //
-    i32BytesPerRow = (*(uint16_t *)(pui8Data + 1) + 7) / 8;
-
-    //
-    // Get the offset to the byte of the image buffer that contains the
-    // starting pixel.
-    //
-    pui8Data += (i32BytesPerRow * pRect->i16YMin) + (pRect->i16XMin / 8) + 5;
-
-    //
-    // Copy the pixel value into all 32 pixels of the uint32_t.  This will
-    // be used later to write multiple pixels into memory (as opposed to one at
-    // a time).
-    //
-    if(ui32Value)
-    {
-        ui32Value = 0xffffffff;
-    }
-
-    //
-    // Get the starting X coordinate of the rectangle.
-    //
-    i32X = pRect->i16XMin;
-
-    //
-    // See if the current buffer byte contains pixel columns that should be
-    // left unmodified.
-    //
-    if(i32X & 7)
-    {
-        //
-        // Compute the mask to access only the appropriate pixels within this
-        // byte column.  The rectangle may start and stop within this byte
-        // column, so the mask may need to be int16_tened to account for this
-        // situation.
-        //
-        i32Mask = 8 - (i32X & 7);
-        if(i32Mask > (pRect->i16XMax - i32X + 1))
-        {
-            i32Mask = pRect->i16XMax - i32X + 1;
-        }
-        i32Mask = ((1 << i32Mask) - 1) << (8 - (i32X & 7) - i32Mask);
-
-        //
-        // Draw the appropriate pixels within this column.
-        //
-        for(i32Y = pRect->i16YMin, pui8Column = pui8Data;
-            i32Y <= pRect->i16YMax;
-            i32Y++, pui8Column += i32BytesPerRow)
-        {
-            *pui8Column = (*pui8Column & ~i32Mask) | (ui32Value & i32Mask);
-        }
-        pui8Data++;
-        i32X = (i32X + 7) & ~7;
-    }
-
-    //
-    // See if the buffer pointer is not half-word aligned and there are at
-    // least eight pixel columns left to draw.
-    //
-    if(((uint32_t)pui8Data & 1) && ((pRect->i16XMax - i32X) > 6))
-    {
-        //
-        // Draw eight pixel columns to half-word align the buffer pointer.
-        //
-        for(i32Y = pRect->i16YMin, pui8Column = pui8Data;
-            i32Y <= pRect->i16YMax;
-            i32Y++, pui8Column += i32BytesPerRow)
-        {
-            *pui8Column = ui32Value & 0xff;
-        }
-        pui8Data++;
-        i32X += 8;
-    }
-
-    //
-    // See if the buffer pointer is not word aligned and there are at least
-    // sixteen pixel columns left to draw.
-    //
-    if(((uint32_t)pui8Data & 2) && ((pRect->i16XMax - i32X) > 14))
-    {
-        //
-        // Draw sixteen pixel columns to word align the buffer pointer.
-        //
-        for(i32Y = pRect->i16YMin, pui8Column = pui8Data;
-            i32Y <= pRect->i16YMax;
-            i32Y++, pui8Column += i32BytesPerRow)
-        {
-            *(uint16_t *)pui8Column = ui32Value & 0xffff;
-        }
-        pui8Data += 2;
-        i32X += 16;
-    }
-
-    //
-    // Loop while there are at least thirty two pixel columnss left to draw.
-    //
-    while((i32X + 31) <= pRect->i16XMax)
-    {
-        //
-        // Draw thirty two pixel columnss.
-        //
-        for(i32Y = pRect->i16YMin, pui8Column = pui8Data;
-            i32Y <= pRect->i16YMax;
-            i32Y++, pui8Column += i32BytesPerRow)
-        {
-            *(uint32_t *)pui8Column = ui32Value;
-        }
-        pui8Data += 4;
-        i32X += 32;
-    }
-
-    //
-    // See if there are at least sixteen pixel columnss left to draw.
-    //
-    if((i32X + 15) <= pRect->i16XMax)
-    {
-        //
-        // Draw sixteen pixel columns, leaving the buffer pointer half-word
-        // aligned.
-        //
-        ui32Value &= 0xffff;
-        for(i32Y = pRect->i16YMin, pui8Column = pui8Data;
-            i32Y <= pRect->i16YMax;
-            i32Y++, pui8Column += i32BytesPerRow)
-        {
-            *(uint16_t *)pui8Column = ui32Value;
-        }
-        pui8Data += 2;
-        i32X += 16;
-    }
-
-    //
-    // See if there are at least eight pixel columns left to draw.
-    //
-    if((i32X + 7) <= pRect->i16XMax)
-    {
-        //
-        // Draw eight pixel columns, leaving the buffer pointer byte aligned.
-        //
-        ui32Value &= 0xff;
-        for(i32Y = pRect->i16YMin, pui8Column = pui8Data;
-            i32Y <= pRect->i16YMax;
-            i32Y++, pui8Column += i32BytesPerRow)
-        {
-            *pui8Column = ui32Value;
-        }
-        pui8Data++;
-        i32X += 8;
-    }
-
-    //
-    // See if there are any pixel columns left to draw.
-    //
-    if(i32X <= pRect->i16XMax)
-    {
-        //
-        // Draw the remaining pixel columns.
-        //
-        i32Mask = 0xff >> (pRect->i16XMax - i32X + 1);
-        ui32Value &= ~i32Mask;
-        for(i32Y = pRect->i16YMin; i32Y <= pRect->i16YMax;
-            i32Y++, pui8Data += i32BytesPerRow)
-        {
-            *pui8Data = (*pui8Data & i32Mask) | ui32Value;
-        }
-    }
-#endif
 }
 
 //*****************************************************************************
@@ -751,11 +294,14 @@ GrOffScreenMonoColorTranslate(void *pvDisplayData, uint32_t ui32Value)
 static void
 GrOffScreenMonoFlush(void *pvDisplayData)
 {
-    //
-    // Check the arguments.
-    //
     ASSERT(pvDisplayData);
+
+    // Flush the screen buffer to the remote display via RS-422
 }
+
+//*****************************************************************************
+// GLOBAL GRAPHICS INTERFACE FUNCTIONS
+//*****************************************************************************
 
 //*****************************************************************************
 //
@@ -776,36 +322,64 @@ GrOffScreenMonoFlush(void *pvDisplayData)
 //
 //*****************************************************************************
 void
-GrOffScreenMonoInit(tDisplay *psDisplay, uint8_t *pui8Image, int32_t i32Width,
-                    int32_t i32Height)
+GrOffScreenMonoInit()
 {
-    //
+	int32_t i32Width  = 128;
+	int32_t i32Height = 64;
+
+	uint8_t *pui8Image = g_ucScreenBuffer;
+
+	tDisplay *psDisplay = &g_FEMA128x64
+
     // Check the arguments.
-    //
     ASSERT(psDisplay);
-    ASSERT(pui8Image);
 
-    //
     // Initialize the display structure.
-    //
-    psDisplay->i32Size = sizeof(tDisplay);
-    psDisplay->pvDisplayData = pui8Image;
-    psDisplay->ui16Width = i32Width;
-    psDisplay->ui16Height = i32Height;
-    psDisplay->pfnPixelDraw = GrOffScreenMonoPixelDraw;
+    psDisplay->i32Size              = sizeof(tDisplay);
+    psDisplay->pvDisplayData        = pui8Image;
+    psDisplay->ui16Width            = i32Width;
+    psDisplay->ui16Height           = i32Height;
+    psDisplay->pfnPixelDraw         = GrOffScreenMonoPixelDraw;
     psDisplay->pfnPixelDrawMultiple = GrOffScreenMonoPixelDrawMultiple;
-    psDisplay->pfnLineDrawH = GrOffScreenMonoLineDrawH;
-    psDisplay->pfnLineDrawV = GrOffScreenMonoLineDrawV;
-    psDisplay->pfnRectFill = GrOffScreenMonoRectFill;
-    psDisplay->pfnColorTranslate = GrOffScreenMonoColorTranslate;
-    psDisplay->pfnFlush = GrOffScreenMonoFlush;
+    psDisplay->pfnLineDrawH         = GrOffScreenMonoLineDrawH;
+    psDisplay->pfnLineDrawV         = GrOffScreenMonoLineDrawV;
+    psDisplay->pfnRectFill          = GrOffScreenMonoRectFill;
+    psDisplay->pfnColorTranslate    = GrOffScreenMonoColorTranslate;
+    psDisplay->pfnFlush             = GrOffScreenMonoFlush;
 
-    //
     // Initialize the image buffer.
-    //
     pui8Image[0] = IMAGE_FMT_1BPP_UNCOMP;
     *(uint16_t *)(pui8Image + 1) = i32Width;
     *(uint16_t *)(pui8Image + 3) = i32Height;
+
+    /* Initialize the graphics context */
+    GrContextInit(&g_context, &g_FEMA128x64);
+}
+
+//*****************************************************************************
+//
+//! Get the size of the offscreen video buffer memory.
+//!
+//! \return Buffer size in bytes.
+//
+//*****************************************************************************
+
+int GrGetScreenBufferSize(void)
+{
+	return SCREEN_BUFSIZE;
+}
+
+//*****************************************************************************
+//
+//! Get the size of the offscreen video buffer memory.
+//!
+//! \return Buffer size in bytes.
+//
+//*****************************************************************************
+
+unsigned char* GrGetScreenBuffer(void)
+{
+	return &g_ucScreenBuffer[0];
 }
 
 //*****************************************************************************

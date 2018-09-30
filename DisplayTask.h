@@ -18,16 +18,15 @@
 /*** SYSTEM CONFIG PARAMETERS STORED IN EPROM ******************************/
 
 typedef enum DisplayCommand{
-    WAKESCREEN,
-    SETSCREEN,
-    NEXTSCREEN,
-	PREVSCREEN,
+    REFRESH,
+    WAKE,
+    SLEEP,
 } DisplayCommand;
 
 typedef struct DisplayMessage{
     DisplayCommand	dispCommand;
-    uint32_t		dispArg1;
-    uint32_t		dispArg2;
+    uint32_t		param1;
+    uint32_t		param2;
 } DisplayMessage;
 
 /*** FUNCTION PROTOTYPES ***************************************************/
