@@ -10,7 +10,7 @@
  */
 
 #ifndef __DISPLAYTASK_H
-#define __DISPLAYTASK_H
+#define __DRC1200TASK_H
 
 /*** CONSTANTS AND CONFIGURATION *******************************************/
 

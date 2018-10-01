@@ -80,7 +80,7 @@
 
 /* External Data Items */
 extern SYSDATA g_sysData;
-extern Mailbox_Handle g_mailboxDisplay;
+extern Mailbox_Handle g_mailboxRemote;
 
 /* Static Function Prototypes */
 static RAMP_SVR_OBJECT g_svr;
@@ -629,7 +629,7 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
         msg.param1      = 0;
         msg.param2      = 0;
 
-        Mailbox_post(g_mailboxDisplay, &msg, 0);
+        Mailbox_post(g_mailboxRemote, &msg, 0);
     }
     else
     {

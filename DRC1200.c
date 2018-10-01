@@ -58,7 +58,7 @@
 
 /* Mailbox Handles created dynamically */
 
-Mailbox_Handle g_mailboxDisplay = NULL;
+Mailbox_Handle g_mailboxRemote = NULL;
 
 /* Global context for drawing */
 tContext g_context;
@@ -122,9 +122,9 @@ Int main()
 
     Mailbox_Params_init(&mboxParams);
     Error_init(&eb);
-    g_mailboxDisplay = Mailbox_create(sizeof(long), 8, &mboxParams, &eb);
+    g_mailboxRemote = Mailbox_create(sizeof(long), 8, &mboxParams, &eb);
 
-    if (g_mailboxDisplay == NULL)
+    if (g_mailboxRemote == NULL)
         System_abort("Mailbox create failed");
 
     /*

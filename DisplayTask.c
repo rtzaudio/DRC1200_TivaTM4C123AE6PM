@@ -74,7 +74,7 @@
 extern tContext g_context;
 
 /* Handles created dynamically */
-extern Mailbox_Handle g_mailboxDisplay;
+extern Mailbox_Handle g_mailboxRemote;
 
 extern SYSDATA g_sysData;
 
@@ -105,7 +105,7 @@ Void DisplayTask(UArg arg0, UArg arg1)
     while (true)
     {
     	/* Wait for a message up to 1 second */
-        if (!Mailbox_pend(g_mailboxDisplay, &msg, 1000))
+        if (!Mailbox_pend(g_mailboxRemote, &msg, 1000))
         {
         	/* No message, blink the LED */
     		GPIO_toggle(Board_GPIO_LED1);
