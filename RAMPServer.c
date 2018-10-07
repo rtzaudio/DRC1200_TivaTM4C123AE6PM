@@ -82,6 +82,8 @@
 extern SYSDATA g_sysData;
 extern Mailbox_Handle g_mailboxRemote;
 
+extern unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
+
 /* Static Function Prototypes */
 static RAMP_SVR_OBJECT g_svr;
 
@@ -92,6 +94,7 @@ static Void RAMPWorkerTaskFxn(UArg arg0, UArg arg1);
 static void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg);
 static void RAMP_Handle_datagram(RAMP_FCB* fcb, RAMP_MSG* msg);
 static RAMP_ACK* GetAckBuf(uint8_t acknak);
+static uint32_t GetLampBits(uint32_t bits);
 
 //*****************************************************************************
 // This function initializes the IPC server and creates all it's worker
@@ -123,7 +126,7 @@ Bool RAMP_Server_init(void)
     uartParams.writeDataMode  = UART_DATA_BINARY;
     uartParams.readDataMode   = UART_DATA_BINARY;
     uartParams.readEcho       = UART_ECHO_OFF;
-    uartParams.baudRate       = 115200;
+    uartParams.baudRate       = 500000;     //115200;
     uartParams.stopBits       = UART_STOP_ONE;
     uartParams.parityType     = UART_PAR_NONE;
 
@@ -214,7 +217,6 @@ Bool RAMP_Server_init(void)
     /*
      * Finally, create the reader, writer and worker tasks
      */
-
     Error_init(&eb);
     Task_Params_init(&taskParams);
     taskParams.stackSize = 700;
@@ -233,7 +235,7 @@ Bool RAMP_Server_init(void)
 
     Error_init(&eb);
     Task_Params_init(&taskParams);
-    taskParams.stackSize = 1500;
+    taskParams.stackSize = 700;
     taskParams.priority  = 10;
     taskParams.arg0      = (UArg)&g_svr;
     taskParams.arg1      = 0;
@@ -574,7 +576,7 @@ Void RAMPWorkerTaskFxn(UArg arg0, UArg arg1)
              * buffer memory. In this case the OLED display data
              * is received directly into the display buffer.
              */
-
+            RAMP_Handle_message(&fcb, &msg);
         }
         else if ((fcb.type & FRAME_TYPE_MASK) == TYPE_MSG_ACK)
         {
@@ -611,7 +613,7 @@ Void RAMPWorkerTaskFxn(UArg arg0, UArg arg1)
 }
 
 //*****************************************************************************
-//
+// These functions handle messages received from the STC-1200 controller.
 //*****************************************************************************
 
 void RAMP_Handle_datagram(RAMP_FCB* fcb, RAMP_MSG* msg)
@@ -625,9 +627,16 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
     {
         DisplayMessage msg;
 
-        msg.dispCommand = REFRESH;
-        msg.param1      = 0;
-        msg.param2      = 0;
+        /* The OLED display buffer has been filled with display
+         * data and ready to display. The buffer also contrains
+         * two extra words at the end of the display buffer that
+         * contain the LED/lamp state bits for all the button LED's.
+         */
+        uint32_t *p = (uint32_t*)&g_ucScreenBuffer[OLED_BUFSIZE];
+
+        msg.dispCommand = DISPLAY_REFRESH;
+        msg.param1      = GetLampBits(*p++);    /* transport lamp bits */
+        msg.param2      = *p++;                 /* all other lamp bits */
 
         Mailbox_post(g_mailboxRemote, &msg, 0);
     }
@@ -638,19 +647,29 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
 }
 
 //*****************************************************************************
-//
+// This function converts DTC format lamp bit mask to STC lamp bit mask.
 //*****************************************************************************
 
-Bool RAMP_Send_Display(UInt32 timeout)
+uint32_t GetLampBits(uint32_t bits)
 {
-    RAMP_FCB fcb;
+    uint32_t mask = 0;
 
-    fcb.type    = MAKETYPE(F_PRIORITY, TYPE_MSG_USER);
-    fcb.acknak  = 0;
-    fcb.seqnum  = RAMP_GetTxSeqNum();
-    fcb.address = 0;
+    if (bits & 0x01)            /* DTC record lamp bit */
+        mask |= L_REC;
 
-    return RAMP_post(&fcb, NULL, timeout);
+    if (bits & 0x02)            /* DTC play lamp bit */
+        mask |= L_PLAY;
+
+    if (bits & 0x04)            /* DTC stop lamp bit */
+        mask |= L_STOP;
+
+    if (bits & 0x08)            /* DTC fwd lamp bit */
+        mask |= L_FWD;
+
+    if (bits & 0x10)            /* DTC rew lamp bit */
+        mask|= L_REW;
+
+    return mask;
 }
 
 //*****************************************************************************

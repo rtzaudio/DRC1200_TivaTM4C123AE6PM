@@ -18,9 +18,9 @@
 /*** SYSTEM CONFIG PARAMETERS STORED IN EPROM ******************************/
 
 typedef enum DisplayCommand{
-    REFRESH,
-    WAKE,
-    SLEEP,
+    DISPLAY_REFRESH,
+    DISPLAY_WAKE,
+    DISPLAY_SLEEP,
 } DisplayCommand;
 
 typedef struct DisplayMessage{
@@ -33,6 +33,6 @@ typedef struct DisplayMessage{
 
 void ClearDisplay();
 void DisplayWelcome();
-Void DisplayTask(UArg arg0, UArg arg1);
+Void DisplayTaskFxn(UArg arg0, UArg arg1);
 
 #endif /* __DISPLAYTASK_H */

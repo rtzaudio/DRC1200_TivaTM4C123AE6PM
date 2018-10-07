@@ -65,8 +65,10 @@
 
 typedef struct _SYSDATA
 {
+    uint32_t    ledMask;                    /* current button LED mask   */
+    uint32_t    transportMode;              /* current transport mode    */
 	uint32_t	dipSwitch;					/* 4 bit DIP switch settings */
-	uint8_t		ui8SerialNumber[16];		/* 16 byte globally unique serial# */
+	uint8_t		ui8SerialNumber[16];		/* 16 byte unique serial#    */
 } SYSDATA;
 
 /* System Parameters stored in EPROM */

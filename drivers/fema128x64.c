@@ -117,10 +117,9 @@ tDisplay g_FEMA128x64;
 static uint32_t g_ulClockMS = 0;
 
 //*****************************************************************************
-// The actual offscreen display buffer memory.
+// The actual offscreen display buffer memory. The screen buffer is followed
+// by two extra 32 bit words the contain the button LED state flags.
 //*****************************************************************************
-
-#define SCREEN_BUFSIZE	(GrOffScreen1BPPSize(128, 64))
 
 unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
 
@@ -134,7 +133,7 @@ unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
 
 unsigned int SSD1309GetScreenBufferSize(void)
 {
-	return SCREEN_BUFSIZE;
+	return OLED_BUFSIZE;
 }
 
 //*****************************************************************************

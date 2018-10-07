@@ -49,6 +49,7 @@
 
 /* TI-RTOS Driver files */
 #include <ti/drivers/GPIO.h>
+#include <ti/drivers/SPI.h>
 #include <ti/drivers/SDSPI.h>
 #include <ti/drivers/I2C.h>
 
@@ -68,6 +69,7 @@
 /* PMX42 Board Header file */
 #include "Board.h"
 #include "DRC1200.h"
+#include "IOExpander.h"
 #include "DisplayTask.h"
 
 /* Global context for drawing */
@@ -90,37 +92,34 @@ static int GetHexStr(char* pTextBuf, uint8_t* pDataBuf, int len);
 // OLED Display Drawing task
 //*****************************************************************************
 
-Void DisplayTask(UArg arg0, UArg arg1)
+Void DisplayTaskFxn(UArg arg0, UArg arg1)
 {
     uint32_t secs = 0;
-    bool screensave = FALSE;
+    uint32_t packet = 0;
     DisplayMessage msg;
-
-    ClearDisplay();
-
-    DisplayWelcome();
-
-    Task_sleep(2000);
+    bool screensave = FALSE;
 
     while (true)
     {
     	/* Wait for a message up to 1 second */
         if (!Mailbox_pend(g_mailboxRemote, &msg, 1000))
         {
-        	/* No message, blink the LED */
-    		GPIO_toggle(Board_GPIO_LED1);
-
     		/* Check for display sleep timeout */
     		if (++secs >= 60)
     		{
     			/* power down and put the display in sleep mode */
-    			FEMA128x64Sleep();
+    			//FEMA128x64Sleep();
     			secs = 0;
     			screensave = TRUE;
     		}
 
         	continue;
         }
+
+        if (!(packet % 5))
+            GPIO_toggle(Board_GPIO_LED1);
+
+        ++packet;
 
         /* Reset the screen saver timeout */
 		secs = 0;
@@ -130,22 +129,24 @@ Void DisplayTask(UArg arg0, UArg arg1)
 		{
 			screensave = FALSE;
 			/* Wakeup the screen and power it up */
-			FEMA128x64Wake();
+			//FEMA128x64Wake();
 		}
 
 		switch(msg.dispCommand)
 		{
-		case REFRESH:
+		case DISPLAY_REFRESH:
+	        g_sysData.ledMask = msg.param1;
+	        SetTransportLEDMask((uint8_t)g_sysData.ledMask, 0xFF);
 		    GrFlush(&g_context);
 		    break;
 
-		case WAKE:
+		case DISPLAY_WAKE:
             secs = 0;
             screensave = TRUE;
             FEMA128x64Wake();
 		    break;
 
-        case SLEEP:
+        case DISPLAY_SLEEP:
             secs = 0;
             screensave = FALSE;
             FEMA128x64Sleep();

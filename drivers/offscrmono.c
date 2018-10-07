@@ -36,8 +36,6 @@
 
 #include "offscrmono.h"
 
-unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
-
 /* FEMA OLED Display buffer context for grlib */
 tDisplay g_FEMA128x64;
 
@@ -324,8 +322,8 @@ GrOffScreenMonoFlush(void *pvDisplayData)
 void
 GrOffScreenMonoInit()
 {
-	int32_t i32Width  = 128;
-	int32_t i32Height = 64;
+	int32_t i32Width  = SCREEN_WIDTH;
+	int32_t i32Height = SCREEN_HEIGHT;
 
 	uint8_t *pui8Image = g_ucScreenBuffer;
 

@@ -13,6 +13,7 @@
 #define __REMOTETASK_H
 
 #include "RAMP.h"
+#include "..\STC1200_TivaTM4C1294NCPDT\RAMPMessage.h"
 
 /*** RAMP MESSAGE STRUCTURE ************************************************/
 
@@ -83,8 +84,8 @@ Bool RAMP_Server_init(void);
 Bool RAMP_pend(RAMP_FCB *fcb, RAMP_MSG* msg, UInt32 timeout);
 Bool RAMP_post(RAMP_FCB *fcb, RAMP_MSG* msg, UInt32 timeout);
 
-Bool RAMP_Send_Display(UInt32 timeout);
-Bool RAMP_Send(RAMP_MSG* msg, UInt32 timeout);
-Bool RAMP_Transaction(RAMP_MSG* txMsg, RAMP_MSG* rxMsg, UInt32 timeout);
+Bool RAMP_Send_Message(RAMP_MSG* msg, UInt32 timeout);
+Bool RAMP_Transaction(RAMP_MSG* txmsg, RAMP_MSG* rxmsg, UInt32 timeout);
+
 
 #endif /* __REMOTETASK_H */

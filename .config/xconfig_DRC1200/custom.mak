@@ -7,5 +7,5 @@
 #       or equal to the generated config header
 #
 linker.cmd: package/cfg/DRC1200_pem4f.xdl
-	$(SED) 's"^\"\(package/cfg/DRC1200_pem4fcfg.cmd\)\"$""\"C:/Users/bob/workspace_v6_2/DRC1200_TivaTM4C123AE6PM/.config/xconfig_DRC1200/\1\""' package/cfg/DRC1200_pem4f.xdl > $@
+	$(SED) 's"^\"\(package/cfg/DRC1200_pem4fcfg.cmd\)\"$""\"C:/Users/bob/workspace_v7/DRC1200_TivaTM4C123AE6PM/.config/xconfig_DRC1200/\1\""' package/cfg/DRC1200_pem4f.xdl > $@
 	-$(SETDATE) -r:max package/cfg/DRC1200_pem4f.h compiler.opt compiler.opt.defs

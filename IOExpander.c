@@ -79,6 +79,7 @@ static IOExpander_InitData initData_U7[] = {
     { MCP_IOCONA, C_SEQOP },	/* Configure for byte mode */
     { MCP_IODIRA, 0x00 },	    /* Port A - all outputs to button LED's */
     { MCP_IODIRB, 0xFF },		/* Port B - all inputs from button switches */
+    { MCP_IOPOLB, 0x1F }        /* Port B - invert polarity of switches */
 };
 
 #define IDSIZE(d)	( sizeof(d)/sizeof(IOExpander_InitData) )
@@ -330,7 +331,7 @@ uint8_t GetTransportLEDMask(void)
 /* Read the current transport switch button states */
 bool ReadTransportSwitches(uint8_t* pSwitchBits)
 {
-	return MCP23S17_read(handleU7, MCP_GPIOA, pSwitchBits);
+	return MCP23S17_read(handleU7, MCP_GPIOB, pSwitchBits);
 }
 
 /*****************************************************************************

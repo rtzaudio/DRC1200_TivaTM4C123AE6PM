@@ -26,8 +26,18 @@
 #ifndef __FEMA128X66_H__
 #define __FEMA128X64_H__
 
-#define SCREEN_WIDTH	128
-#define SCREEN_HEIGHT	64
+#define SCREEN_WIDTH	    128
+#define SCREEN_HEIGHT	    64
+
+#define OLED_BUFSIZE        (GrOffScreen1BPPSize(SCREEN_WIDTH, SCREEN_HEIGHT))
+#define LED_BUFSIZE         (sizeof(uint32_t) * 2)
+
+#define SCREEN_BUFSIZE      (OLED_BUFSIZE + LED_BUFSIZE)
+
+/* External Data Items */
+
+extern tDisplay g_FEMA128x64;
+extern unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
 
 //*****************************************************************************
 //
@@ -40,9 +50,8 @@ void FEMA128x64Init(void);
 void FEMA128x64Wake(void);
 void FEMA128x64Sleep(void);
 
-unsigned char* SSD1309GetScreenBuffer(void);
-unsigned int SSD1309GetScreenBufferSize(void);
+//unsigned char* SSD1309GetScreenBuffer(void);
+//unsigned int SSD1309GetScreenBufferSize(void);
 
-extern tDisplay g_FEMA128x64;
 
 #endif // __FEMA128X64_H__

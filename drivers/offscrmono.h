@@ -23,21 +23,16 @@
 //
 //*****************************************************************************
 
-#ifndef __FEMA128X66_H__
-#define __FEMA128X64_H__
+#ifndef __OFFSCRMONO_H__
+#define __OFFSCRMONO_H__
 
-#define SCREEN_WIDTH	128
-#define SCREEN_HEIGHT	64
-
-#define SCREEN_BUFSIZE	(GrOffScreen1BPPSize(SCREEN_WIDTH, SCREEN_HEIGHT))
+#include "fema128x64.h"
 
 /* Display buffer context for grlib */
 extern tDisplay g_FEMA128x64;
 
 /* Global context for drawing */
 extern tContext g_context;
-
-//extern unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
 
 //*****************************************************************************
 //
@@ -49,4 +44,4 @@ void GrOffScreenMonoInit(void);
 int GrGetScreenBufferSize(void);
 unsigned char* GrGetScreenBuffer(void);
 
-#endif // __FEMA128X64_H__
+#endif // __OFFSCRMONO_H__

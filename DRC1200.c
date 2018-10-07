@@ -80,6 +80,7 @@ Int main()
 { 
     Error_Block eb;
 	Task_Handle task;
+    Task_Params taskParams;
     Mailbox_Params mboxParams;
 
     System_printf("enter main()\n");
@@ -122,7 +123,7 @@ Int main()
 
     Mailbox_Params_init(&mboxParams);
     Error_init(&eb);
-    g_mailboxRemote = Mailbox_create(sizeof(long), 8, &mboxParams, &eb);
+    g_mailboxRemote = Mailbox_create(sizeof(DisplayMessage), 16, &mboxParams, &eb);
 
     if (g_mailboxRemote == NULL)
         System_abort("Mailbox create failed");
@@ -132,8 +133,11 @@ Int main()
      */
 
     Error_init(&eb);
+    Task_Params_init(&taskParams);
+    taskParams.stackSize = 1024;
+    taskParams.priority  = 5;
 
-    task = Task_create(MainButtonTask, NULL, &eb);
+    task = Task_create(MainButtonTask, &taskParams, &eb);
 
     if (task == NULL) {
         System_printf("Task_create() failed!\n");
@@ -145,13 +149,23 @@ Int main()
     return(0);
 }
 
+
 //*****************************************************************************
 //
 //*****************************************************************************
 
+#define DEBOUNCE    6
+
 Void MainButtonTask(UArg a0, UArg a1)
 {
-    System_printf("enter taskFxn()\n");
+    RAMP_MSG msg;
+    Error_Block eb;
+    Task_Params taskParams;
+
+    uint8_t bits = 0x00;
+    uint8_t temp;
+    uint8_t xport_prev = 0xff;
+    uint8_t debounce_xport = 0;
 
     /* Initialize the MCP23S17 I/O expanders */
     IOExpander_initialize();
@@ -163,24 +177,59 @@ Void MainButtonTask(UArg a0, UArg a1)
     }
 
     /* Start the remote communications service tasks */
-    if (RAMP_Server_init())
+    if (!RAMP_Server_init())
     {
         System_abort("RAMP Init Failed!\n");
     }
+
+    Error_init(&eb);
+    Task_Params_init(&taskParams);
+    taskParams.stackSize = 1524;
+    taskParams.priority  = 5;
+
+    Task_create(DisplayTaskFxn, &taskParams, &eb);
+
+    /* Ensure all button LED's are off */
+    SetTransportLEDMask(0, 0xFF);
+    SetButtonLEDMask(0, 0xFF);
 
     /****************************************************************
      * Enter the main application button processing loop forever.
      ****************************************************************/
 
+    ReadTransportSwitches(&xport_prev);
+
 	for(;;)
 	{
-        SetButtonLEDMask(L_MENU, 0);
-        SetTransportLEDMask(L_STOP, L_REC|L_PLAY);
+        /* Read the transport button bits */
 
-        Task_sleep(1000);
+        ReadTransportSwitches(&bits);
 
-        SetTransportLEDMask(L_REC|L_PLAY, L_STOP);
-        Task_sleep(1000);
+        if (bits)
+        {
+            temp = bits & ~(SW_REC);
+
+            if (temp != xport_prev)
+            {
+                if (++debounce_xport >= DEBOUNCE)
+                {
+                    debounce_xport = 0;
+
+                    xport_prev = temp;
+
+                    /* Debounced button press, send it to STC */
+                    msg.type     = MSG_TYPE_SWITCH;
+                    msg.opcode   = OP_SWITCH_PRESS;
+                    msg.param1.U = bits;
+                    msg.param2.U = 0;
+
+                    /* Send the button press to to STC controller */
+                    RAMP_Send_Message(&msg, 0);
+                }
+            }
+        }
+
+        Task_sleep(10);
 	}
 }
 

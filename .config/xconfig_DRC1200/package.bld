@@ -11,7 +11,7 @@ var makeAssembly = false;
 var Executable = xdc.module('xdc.bld.Executable');
 
 var exeOpts = new Executable.Attrs({
-        cfgScript: 'C:/Users/bob/workspace_v6_2/DRC1200_TivaTM4C123AE6PM/DRC1200.cfg',
+        cfgScript: 'C:/Users/bob/workspace_v7/DRC1200_TivaTM4C123AE6PM/DRC1200.cfg',
         profile: 'release',
         cfgHome: 'xconfig_DRC1200',
 });
@@ -40,8 +40,8 @@ else {
 }
 
 var thisObj = {
-    cfg:        'C:/Users/bob/workspace_v6_2/DRC1200_TivaTM4C123AE6PM/DRC1200.cfg',
-    outputPath: 'C:/Users/bob/workspace_v6_2/DRC1200_TivaTM4C123AE6PM/.config/xconfig_DRC1200',
+    cfg:        'C:/Users/bob/workspace_v7/DRC1200_TivaTM4C123AE6PM/DRC1200.cfg',
+    outputPath: 'C:/Users/bob/workspace_v7/DRC1200_TivaTM4C123AE6PM/.config/xconfig_DRC1200',
     exeName:    'DRC1200' + suffix,
     exeIntName: 'DRC1200' + suffix.replace('.', '_'),
     targ:       targ,
