@@ -94,7 +94,6 @@ static Void RAMPWorkerTaskFxn(UArg arg0, UArg arg1);
 static void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg);
 static void RAMP_Handle_datagram(RAMP_FCB* fcb, RAMP_MSG* msg);
 static RAMP_ACK* GetAckBuf(uint8_t acknak);
-static uint32_t GetLampBits(uint32_t bits);
 
 //*****************************************************************************
 // This function initializes the IPC server and creates all it's worker
@@ -126,7 +125,7 @@ Bool RAMP_Server_init(void)
     uartParams.writeDataMode  = UART_DATA_BINARY;
     uartParams.readDataMode   = UART_DATA_BINARY;
     uartParams.readEcho       = UART_ECHO_OFF;
-    uartParams.baudRate       = 500000;     //115200;
+    uartParams.baudRate       = 250000;
     uartParams.stopBits       = UART_STOP_ONE;
     uartParams.parityType     = UART_PAR_NONE;
 
@@ -628,15 +627,15 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
         DisplayMessage msg;
 
         /* The OLED display buffer has been filled with display
-         * data and ready to display. The buffer also contrains
+         * data and ready to display. The buffer also contains
          * two extra words at the end of the display buffer that
          * contain the LED/lamp state bits for all the button LED's.
          */
         uint32_t *p = (uint32_t*)&g_ucScreenBuffer[OLED_BUFSIZE];
 
         msg.dispCommand = DISPLAY_REFRESH;
-        msg.param1      = GetLampBits(*p++);    /* transport lamp bits */
-        msg.param2      = *p++;                 /* all other lamp bits */
+        msg.param1      = *p++;             /* led/lamp bits */
+        msg.param2      = *p++;             /* reserved */
 
         Mailbox_post(g_mailboxRemote, &msg, 0);
     }
@@ -644,32 +643,6 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
     {
 
     }
-}
-
-//*****************************************************************************
-// This function converts DTC format lamp bit mask to STC lamp bit mask.
-//*****************************************************************************
-
-uint32_t GetLampBits(uint32_t bits)
-{
-    uint32_t mask = 0;
-
-    if (bits & 0x01)            /* DTC record lamp bit */
-        mask |= L_REC;
-
-    if (bits & 0x02)            /* DTC play lamp bit */
-        mask |= L_PLAY;
-
-    if (bits & 0x04)            /* DTC stop lamp bit */
-        mask |= L_STOP;
-
-    if (bits & 0x08)            /* DTC fwd lamp bit */
-        mask |= L_FWD;
-
-    if (bits & 0x10)            /* DTC rew lamp bit */
-        mask|= L_REW;
-
-    return mask;
 }
 
 //*****************************************************************************

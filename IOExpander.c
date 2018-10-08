@@ -72,7 +72,9 @@ static IOExpander_InitData initData_U11[] = {
 static IOExpander_InitData initData_U10[] = {
     { MCP_IOCONA, C_SEQOP },	/* Configure for byte mode */
     { MCP_IODIRA, 0xFF },	    /* Port A - all inputs from push button switches */
+    { MCP_IOPOLA, 0xFF },       /* Port A - invert polarity of switches */
     { MCP_IODIRB, 0xFF },		/* Port B - all inputs from push button switches */
+    { MCP_IOPOLB, 0xFF },       /* Port B - invert polarity of switches */
 };
 
 static IOExpander_InitData initData_U7[] = {

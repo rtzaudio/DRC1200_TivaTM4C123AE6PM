@@ -162,10 +162,14 @@ Void MainButtonTask(UArg a0, UArg a1)
     Error_Block eb;
     Task_Params taskParams;
 
-    uint8_t bits = 0x00;
+    uint8_t bits;
     uint8_t temp;
     uint8_t xport_prev = 0xff;
-    uint8_t debounce_xport = 0;
+    uint32_t debounce_xport = 0;
+
+    uint16_t switches;
+    uint16_t switches_prev = 0xff;
+    uint32_t debounce_switches = 0;
 
     /* Initialize the MCP23S17 I/O expanders */
     IOExpander_initialize();
@@ -201,7 +205,9 @@ Void MainButtonTask(UArg a0, UArg a1)
 
 	for(;;)
 	{
-        /* Read the transport button bits */
+        /*
+         *  Read the TRANSPORT button bits
+         */
 
         ReadTransportSwitches(&bits);
 
@@ -219,9 +225,37 @@ Void MainButtonTask(UArg a0, UArg a1)
 
                     /* Debounced button press, send it to STC */
                     msg.type     = MSG_TYPE_SWITCH;
-                    msg.opcode   = OP_SWITCH_PRESS;
-                    msg.param1.U = bits;
+                    msg.opcode   = OP_SWITCH_TRANSPORT;
+                    msg.param1.U = (uint32_t)bits;
                     msg.param2.U = 0;
+
+                    /* Send the button press to to STC controller */
+                    RAMP_Send_Message(&msg, 0);
+                }
+            }
+        }
+
+        /*
+         *  Read the LOCATE button bits
+         */
+
+        ReadButtonSwitches(&switches);
+
+        if (switches)
+        {
+            if (switches != switches_prev)
+            {
+                if (++debounce_switches >= DEBOUNCE)
+                {
+                    debounce_switches = 0;
+
+                    switches_prev = switches;
+
+                    /* Debounced button press, send it to STC */
+                    msg.type     = MSG_TYPE_SWITCH;
+                    msg.opcode   = OP_SWITCH_REMOTE;
+                    msg.param1.U = (uint32_t)switches;
+                    msg.param2.U = (uint32_t)bits;
 
                     /* Send the button press to to STC controller */
                     RAMP_Send_Message(&msg, 0);

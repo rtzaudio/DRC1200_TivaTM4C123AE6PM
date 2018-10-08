@@ -136,7 +136,11 @@ Void DisplayTaskFxn(UArg arg0, UArg arg1)
 		{
 		case DISPLAY_REFRESH:
 	        g_sysData.ledMask = msg.param1;
+	        /* Set the transport button LED's */
 	        SetTransportLEDMask((uint8_t)g_sysData.ledMask, 0xFF);
+	        /* Set the rest of the button LED's */
+	        SetButtonLEDMask((uint16_t)(g_sysData.ledMask >> 8), 0xFFFF);
+	        /* Flush the buffer to the display */
 		    GrFlush(&g_context);
 		    break;
 

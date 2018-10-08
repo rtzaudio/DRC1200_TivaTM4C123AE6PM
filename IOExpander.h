@@ -1,5 +1,5 @@
-#ifndef DRC_1200_TIVATM4C123AE6PMI_IOEXPANDER_H_
-#define DRC_1200_TIVATM4C123AE6PMI_IOEXPANDER_H_
+#ifndef _IOEXPANDER_H_
+#define _IOEXPANDER_H_
 
 typedef struct IOExpander_InitData {
     uint8_t	addr;
@@ -33,4 +33,4 @@ uint16_t GetButtonLEDMask(void);
 bool SetButtonLEDMask(uint16_t maskSet, uint16_t maskClear);
 bool ReadButtonSwitches(uint16_t* pSwitchBits);
 
-#endif /*DRC_1200_TIVATM4C123AE6PMI_IOEXPANDER_H_*/
+#endif /* _IOEXPANDER_H_ */
