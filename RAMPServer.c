@@ -70,13 +70,13 @@
 /* Graphiclib Header file */
 #include <grlib/grlib.h>
 #include <RAMPServer.h>
+#include <RemoteTask.h>
 #include "drivers/offscrmono.h"
 
 /* PMX42 Board Header file */
 #include "Board.h"
 #include "RAMP.h"
 #include "DRC1200.h"
-#include "DisplayTask.h"
 
 /* External Data Items */
 extern SYSDATA g_sysData;
@@ -624,7 +624,7 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
 {
     if ((fcb->type & FRAME_TYPE_MASK) == TYPE_MSG_USER)
     {
-        DisplayMessage msg;
+        RemoteMessage msg;
 
         /* The OLED display buffer has been filled with display
          * data and ready to display. The buffer also contains
@@ -633,9 +633,9 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
          */
         uint32_t *p = (uint32_t*)&g_ucScreenBuffer[OLED_BUFSIZE];
 
-        msg.dispCommand = DISPLAY_REFRESH;
-        msg.param1      = *p++;             /* led/lamp bits */
-        msg.param2      = *p++;             /* reserved */
+        msg.command = DISPLAY_REFRESH;
+        msg.param1  = *p++;     /* led/lamp bits */
+        msg.param2  = *p++;     /* reserved */
 
         Mailbox_post(g_mailboxRemote, &msg, 0);
     }

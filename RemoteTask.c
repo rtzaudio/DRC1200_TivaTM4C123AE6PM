@@ -64,13 +64,13 @@
 
 /* Graphiclib Header file */
 #include <grlib/grlib.h>
+#include <RemoteTask.h>
 #include "drivers/fema128x64.h"
 
 /* PMX42 Board Header file */
 #include "Board.h"
 #include "DRC1200.h"
 #include "IOExpander.h"
-#include "DisplayTask.h"
 
 /* Global context for drawing */
 extern tContext g_context;
@@ -92,11 +92,11 @@ static int GetHexStr(char* pTextBuf, uint8_t* pDataBuf, int len);
 // OLED Display Drawing task
 //*****************************************************************************
 
-Void DisplayTaskFxn(UArg arg0, UArg arg1)
+Void RemoteTaskFxn(UArg arg0, UArg arg1)
 {
     uint32_t secs = 0;
     uint32_t packet = 0;
-    DisplayMessage msg;
+    RemoteMessage msg;
     bool screensave = FALSE;
 
     while (true)
@@ -132,9 +132,10 @@ Void DisplayTaskFxn(UArg arg0, UArg arg1)
 			//FEMA128x64Wake();
 		}
 
-		switch(msg.dispCommand)
+		switch(msg.command)
 		{
 		case DISPLAY_REFRESH:
+		    /* Display buffer filled, update the display with new content */
 	        g_sysData.ledMask = msg.param1;
 	        /* Set the transport button LED's */
 	        SetTransportLEDMask((uint8_t)g_sysData.ledMask, 0xFF);

@@ -45,6 +45,7 @@
 
 /* Graphiclib Header file */
 #include <grlib/grlib.h>
+#include <RemoteTask.h>
 #include "drivers/fema128x64.h"
 
 //#include <driverlib/sysctl.h>
@@ -53,7 +54,6 @@
 #include "Board.h"
 #include "DRC1200.h"
 #include "IOExpander.h"
-#include "DisplayTask.h"
 #include "RAMPServer.h"
 
 /* Mailbox Handles created dynamically */
@@ -123,7 +123,7 @@ Int main()
 
     Mailbox_Params_init(&mboxParams);
     Error_init(&eb);
-    g_mailboxRemote = Mailbox_create(sizeof(DisplayMessage), 16, &mboxParams, &eb);
+    g_mailboxRemote = Mailbox_create(sizeof(RemoteMessage), 16, &mboxParams, &eb);
 
     if (g_mailboxRemote == NULL)
         System_abort("Mailbox create failed");
@@ -149,7 +149,6 @@ Int main()
     return(0);
 }
 
-
 //*****************************************************************************
 //
 //*****************************************************************************
@@ -158,18 +157,13 @@ Int main()
 
 Void MainButtonTask(UArg a0, UArg a1)
 {
-    RAMP_MSG msg;
-    Error_Block eb;
-    Task_Params taskParams;
-
     uint8_t bits;
-    uint8_t temp;
-    uint8_t xport_prev = 0xff;
-    uint32_t debounce_xport = 0;
-
     uint16_t switches;
-    uint16_t switches_prev = 0xff;
+    uint32_t debounce_xport = 0;
     uint32_t debounce_switches = 0;
+    Task_Params taskParams;
+    Error_Block eb;
+    RAMP_MSG msg;
 
     /* Initialize the MCP23S17 I/O expanders */
     IOExpander_initialize();
@@ -191,7 +185,7 @@ Void MainButtonTask(UArg a0, UArg a1)
     taskParams.stackSize = 1524;
     taskParams.priority  = 5;
 
-    Task_create(DisplayTaskFxn, &taskParams, &eb);
+    Task_create(RemoteTaskFxn, &taskParams, &eb);
 
     /* Ensure all button LED's are off */
     SetTransportLEDMask(0, 0xFF);
@@ -201,9 +195,7 @@ Void MainButtonTask(UArg a0, UArg a1)
      * Enter the main application button processing loop forever.
      ****************************************************************/
 
-    ReadTransportSwitches(&xport_prev);
-
-	for(;;)
+    for(;;)
 	{
         /*
          *  Read the TRANSPORT button bits
@@ -211,27 +203,22 @@ Void MainButtonTask(UArg a0, UArg a1)
 
         ReadTransportSwitches(&bits);
 
-        if (bits)
+        uint8_t temp = bits & ~(SW_REC);
+
+        if (temp)
         {
-            temp = bits & ~(SW_REC);
-
-            if (temp != xport_prev)
+            if (++debounce_xport >= DEBOUNCE)
             {
-                if (++debounce_xport >= DEBOUNCE)
-                {
-                    debounce_xport = 0;
+                debounce_xport = 0;
 
-                    xport_prev = temp;
+                /* Debounced button press, send it to STC */
+                msg.type     = MSG_TYPE_SWITCH;
+                msg.opcode   = OP_SWITCH_TRANSPORT;
+                msg.param1.U = (uint32_t)bits;
+                msg.param2.U = 0;
 
-                    /* Debounced button press, send it to STC */
-                    msg.type     = MSG_TYPE_SWITCH;
-                    msg.opcode   = OP_SWITCH_TRANSPORT;
-                    msg.param1.U = (uint32_t)bits;
-                    msg.param2.U = 0;
-
-                    /* Send the button press to to STC controller */
-                    RAMP_Send_Message(&msg, 0);
-                }
+                /* Send the button press to to STC controller */
+                RAMP_Send_Message(&msg, 0);
             }
         }
 
@@ -243,104 +230,24 @@ Void MainButtonTask(UArg a0, UArg a1)
 
         if (switches)
         {
-            if (switches != switches_prev)
+            if (++debounce_switches >= DEBOUNCE)
             {
-                if (++debounce_switches >= DEBOUNCE)
-                {
-                    debounce_switches = 0;
+                debounce_switches = 0;
 
-                    switches_prev = switches;
+                /* Debounced button press, send it to STC */
+                msg.type     = MSG_TYPE_SWITCH;
+                msg.opcode   = OP_SWITCH_REMOTE;
+                msg.param1.U = (uint32_t)switches;
+                msg.param2.U = (uint32_t)bits;
 
-                    /* Debounced button press, send it to STC */
-                    msg.type     = MSG_TYPE_SWITCH;
-                    msg.opcode   = OP_SWITCH_REMOTE;
-                    msg.param1.U = (uint32_t)switches;
-                    msg.param2.U = (uint32_t)bits;
-
-                    /* Send the button press to to STC controller */
-                    RAMP_Send_Message(&msg, 0);
-                }
+                /* Send the button press to to STC controller */
+                RAMP_Send_Message(&msg, 0);
             }
         }
 
         Task_sleep(10);
 	}
 }
-
-//*****************************************************************************
-// This function reads the globally unique serial number
-// from the I2C eprom/serial# part.
-//*****************************************************************************
-
-bool ReadSerialNumber(uint8_t ui8SerialNumber[16])
-{
-	bool			ret = false;
-	uint8_t			txByte;
-	I2C_Handle      handle;
-	I2C_Params      params;
-	I2C_Transaction i2cTransaction;
-
-    /* default invalid serial number is all FF's */
-    memset(ui8SerialNumber, 0xFF, sizeof(ui8SerialNumber));
-
-	I2C_Params_init(&params);
-
-	params.transferCallbackFxn = NULL;
-	params.transferMode        = I2C_MODE_BLOCKING;
-	params.bitRate             = I2C_100kHz;
-
-	if ((handle = I2C_open(Board_I2C1, &params)) != NULL)
-	{
-		/* Note the Upper bit of the word address must be set
-		 * in order to read the serial number. Thus 80H sets
-		 * the starting address to zero prior to reading
-		 * the sixteen bytes of serial number data.
-		 */
-		txByte = 0x80;
-
-		i2cTransaction.slaveAddress = Board_AT24CS01_SERIAL_ADDR;
-		i2cTransaction.writeBuf     = &txByte;
-		i2cTransaction.writeCount   = 1;
-		i2cTransaction.readBuf      = ui8SerialNumber;
-		i2cTransaction.readCount    = 16;
-
-		ret = I2C_transfer(handle, &i2cTransaction);
-
-		I2C_close(handle);
-	}
-
-	return ret;
-}
-
-//*****************************************************************************
-// Set default runtime values
-//*****************************************************************************
-
-void InitSysDefaults(SYSPARMS* p)
-{
-    /* default servo parameters */
-	p->magic        = MAGIC;
-    p->version		= MAKEREV(FIRMWARE_VER, FIRMWARE_REV);
-}
-
-//*****************************************************************************
-// Write system parameters from our global settings buffer to EEPROM.
-//
-// Returns:  0 = Sucess
-//          -1 = Error writing EEPROM data
-//*****************************************************************************
-
-int SysParamsWrite(SYSPARMS* sp)
-{
-	int32_t rc;
-
-	sp->version = MAKEREV(FIRMWARE_VER, FIRMWARE_REV);
-	sp->magic   = MAGIC;
-
-	rc = EEPROMProgram((uint32_t *)sp, 0, sizeof(SYSPARMS));
-
-    return rc;
- }
 
 //*****************************************************************************
 // Read system parameters into our global settings buffer from EEPROM.
@@ -365,3 +272,80 @@ int SysParamsRead(SYSPARMS* sp)
 
 	return 0;
 }
+
+//*****************************************************************************
+// Write system parameters from our global settings buffer to EEPROM.
+//
+// Returns:  0 = Sucess
+//          -1 = Error writing EEPROM data
+//*****************************************************************************
+
+int SysParamsWrite(SYSPARMS* sp)
+{
+    int32_t rc;
+
+    sp->version = MAKEREV(FIRMWARE_VER, FIRMWARE_REV);
+    sp->magic   = MAGIC;
+
+    rc = EEPROMProgram((uint32_t *)sp, 0, sizeof(SYSPARMS));
+
+    return rc;
+}
+
+//*****************************************************************************
+// Set default runtime values
+//*****************************************************************************
+
+void InitSysDefaults(SYSPARMS* p)
+{
+    /* default servo parameters */
+    p->magic        = MAGIC;
+    p->version      = MAKEREV(FIRMWARE_VER, FIRMWARE_REV);
+}
+
+//*****************************************************************************
+// This function reads the globally unique serial number
+// from the I2C eprom/serial# part.
+//*****************************************************************************
+
+bool ReadSerialNumber(uint8_t ui8SerialNumber[16])
+{
+    bool            ret = false;
+    uint8_t         txByte;
+    I2C_Handle      handle;
+    I2C_Params      params;
+    I2C_Transaction i2cTransaction;
+
+    /* default invalid serial number is all FF's */
+    memset(ui8SerialNumber, 0xFF, sizeof(ui8SerialNumber));
+
+    I2C_Params_init(&params);
+
+    params.transferCallbackFxn = NULL;
+    params.transferMode        = I2C_MODE_BLOCKING;
+    params.bitRate             = I2C_100kHz;
+
+    if ((handle = I2C_open(Board_I2C1, &params)) != NULL)
+    {
+        /* Note the Upper bit of the word address must be set
+         * in order to read the serial number. Thus 80H sets
+         * the starting address to zero prior to reading
+         * the sixteen bytes of serial number data.
+         */
+        txByte = 0x80;
+
+        i2cTransaction.slaveAddress = Board_AT24CS01_SERIAL_ADDR;
+        i2cTransaction.writeBuf     = &txByte;
+        i2cTransaction.writeCount   = 1;
+        i2cTransaction.readBuf      = ui8SerialNumber;
+        i2cTransaction.readCount    = 16;
+
+        ret = I2C_transfer(handle, &i2cTransaction);
+
+        I2C_close(handle);
+    }
+
+    return ret;
+}
+
+/* End-Of-File */

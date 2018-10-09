@@ -9,30 +9,30 @@
  * WRITTEN CONSENT OF THE AUTHOR.
  */
 
-#ifndef __DISPLAYTASK_H
-#define __DRC1200TASK_H
+#ifndef _REMOTETASK_H_
+#define _REMOTETASK_H_
 
 /*** CONSTANTS AND CONFIGURATION *******************************************/
 
 
-/*** SYSTEM CONFIG PARAMETERS STORED IN EPROM ******************************/
+/*** DISPLAY MESSAGE STRUCTURES ********************************************/
 
-typedef enum DisplayCommand{
+typedef enum RemoteCommand{
     DISPLAY_REFRESH,
     DISPLAY_WAKE,
     DISPLAY_SLEEP,
-} DisplayCommand;
+} RemoteCommand;
 
-typedef struct DisplayMessage{
-    DisplayCommand	dispCommand;
+typedef struct RemoteMessage{
+    RemoteCommand	command;
     uint32_t		param1;
     uint32_t		param2;
-} DisplayMessage;
+} RemoteMessage;
 
 /*** FUNCTION PROTOTYPES ***************************************************/
 
 void ClearDisplay();
 void DisplayWelcome();
-Void DisplayTaskFxn(UArg arg0, UArg arg1);
+Void RemoteTaskFxn(UArg arg0, UArg arg1);
 
-#endif /* __DISPLAYTASK_H */
+#endif /* _REMOTETASK_H_ */
