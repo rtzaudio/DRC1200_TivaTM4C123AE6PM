@@ -56,6 +56,9 @@
 #include "IOExpander.h"
 #include "RAMPServer.h"
 
+/* Switch debounce time x 10ms*/
+#define DEBOUNCE    5
+
 /* Mailbox Handles created dynamically */
 
 Mailbox_Handle g_mailboxRemote = NULL;
@@ -78,10 +81,10 @@ bool ReadSerialNumber(uint8_t ui8SerialNumber[16]);
 
 Int main()
 { 
-    Error_Block eb;
-	Task_Handle task;
-    Task_Params taskParams;
+	Task_Handle    task;
+    Task_Params    taskParams;
     Mailbox_Params mboxParams;
+    Error_Block    eb;
 
     System_printf("enter main()\n");
 
@@ -153,17 +156,15 @@ Int main()
 //
 //*****************************************************************************
 
-#define DEBOUNCE    6
-
 Void MainButtonTask(UArg a0, UArg a1)
 {
-    uint8_t bits;
-    uint16_t switches;
-    uint32_t debounce_xport = 0;
-    uint32_t debounce_switches = 0;
-    Task_Params taskParams;
+    uint8_t     bits;
+    uint16_t    switches;
+    uint32_t    debounce_xport = 0;
+    uint32_t    debounce_switches = 0;
     Error_Block eb;
-    RAMP_MSG msg;
+    RAMP_MSG    msg;
+    Task_Params taskParams;
 
     /* Initialize the MCP23S17 I/O expanders */
     IOExpander_initialize();
@@ -214,11 +215,17 @@ Void MainButtonTask(UArg a0, UArg a1)
                 /* Debounced button press, send it to STC */
                 msg.type     = MSG_TYPE_SWITCH;
                 msg.opcode   = OP_SWITCH_TRANSPORT;
-                msg.param1.U = (uint32_t)bits;
+                msg.param1.U = (uint32_t)bits & 0xFF;
                 msg.param2.U = 0;
 
                 /* Send the button press to to STC controller */
                 RAMP_Send_Message(&msg, 0);
+
+                /* Wait for all switches, except REC, to be released */
+                do {
+                    ReadTransportSwitches(&bits);
+                    Task_sleep(10);
+                } while (bits & ~(SW_REC));
             }
         }
 
@@ -237,11 +244,17 @@ Void MainButtonTask(UArg a0, UArg a1)
                 /* Debounced button press, send it to STC */
                 msg.type     = MSG_TYPE_SWITCH;
                 msg.opcode   = OP_SWITCH_REMOTE;
-                msg.param1.U = (uint32_t)switches;
-                msg.param2.U = (uint32_t)bits;
+                msg.param1.U = (uint32_t)switches & 0xFFFF;
+                msg.param2.U = 0;
 
                 /* Send the button press to to STC controller */
                 RAMP_Send_Message(&msg, 0);
+
+                /* Wait for all switches to be released */
+                do {
+                    ReadButtonSwitches(&switches);
+                    Task_sleep(10);
+                } while (switches);
             }
         }
 

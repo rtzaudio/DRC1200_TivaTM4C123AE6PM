@@ -376,7 +376,7 @@ bool ReadButtonSwitches(uint16_t* pSwitchBits)
 	MCP23S17_read(handleU10, MCP_GPIOA, (uint8_t*)&portA);
 	MCP23S17_read(handleU10, MCP_GPIOB, (uint8_t*)&portB);
 
-	*pSwitchBits = portA | (portB << 8);
+	*pSwitchBits = ((portA & 0xFF) | ((portB & 0xFF) << 8));
 
 	return true;
 }
