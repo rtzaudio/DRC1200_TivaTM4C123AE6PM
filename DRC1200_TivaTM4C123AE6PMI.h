@@ -203,6 +203,10 @@ typedef enum DRC1200_GPIOName {
     DRC1200_GPIO_U7_INTA,		/* MCP23S17T I/O Expander Interrupt */
     DRC1200_GPIO_U7_INTB,		/* MCP23S17T I/O Expander Interrupt */
 	DRC1200_GPIO_JOGSW,			/* Jog wheel encoder push switch */
+	DRC1200_GPIO_DIP_SW1,       /* config DIP switch 1 */
+	DRC1200_GPIO_DIP_SW2,       /* config DIP switch 2 */
+	DRC1200_GPIO_DIP_SW3,       /* config DIP switch 3 */
+	DRC1200_GPIO_DIP_SW4,       /* config DIP switch 4 */
 	DRC1200_GPIO_LED1,			/* LED1 on display card */
 	DRC1200_GPIO_LED2,			/* LED2 on display card */
 	DRC1200_GPIO_RS422_RE,		/* RS422 Receiver Enable */

@@ -187,20 +187,28 @@ GPIO_PinConfig gpioPinConfigs[DRC1200_GPIOCOUNT] = {
     GPIOTiva_PE_3 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
 	/* (4) PG4 : JOGSW input */
     GPIOTiva_PG_4 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
+    /* (5) PG0 : DIP_SW1 input */
+    GPIOTiva_PG_0 | GPIO_CFG_IN_PU,
+    /* (6) PG1 : DIP_SW2 input */
+    GPIOTiva_PG_1 | GPIO_CFG_IN_PU,
+    /* (7) PG2 : DIP_SW3 input */
+    GPIOTiva_PG_2 | GPIO_CFG_IN_PU,
+    /* (8) PG3 : DIP_SW4 input */
+    GPIOTiva_PG_3 | GPIO_CFG_IN_PU,
     /*=== Output pins ===*/
-    /* (5) PC7 : LED1 output */
+    /* (9) PC7 : LED1 output */
     GPIOTiva_PC_7 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW,
-    /* (6) PG5 : LED2 output */
+    /* (10) PG5 : LED2 output */
     GPIOTiva_PG_5 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW,
-    /* (7) PB0 : RS422 #RE output */
+    /* (11) PB0 : RS422 #RE output */
     GPIOTiva_PB_0 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_HIGH,
-    /* (8) PB1 : RS422 DE output */
+    /* (12) PB1 : RS422 DE output */
     GPIOTiva_PB_1 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_LOW,
-	/* (9) PA3 : U11 CS */
+	/* (13) PA3 : U11 CS */
 	GPIOTiva_PA_3 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_HIGH,
-	/* (10) PF3 : U10 CS */
+	/* (14) PF3 : U10 CS */
 	GPIOTiva_PF_3 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_HIGH,
-	/* (11) PB5 : U7 CS */
+	/* (15) PB5 : U7 CS */
 	GPIOTiva_PB_5 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_HIGH,
 };
 

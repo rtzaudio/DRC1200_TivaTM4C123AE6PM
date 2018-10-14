@@ -61,9 +61,6 @@ extern "C" {
 
 #define Board_UART_RS422_REMOTE     DRC1200_UART0			// RS-422 driver on UART0
 
-#define Board_GPIO_LED1				DRC1200_GPIO_LED1		// LED1 on display card
-#define Board_GPIO_LED2				DRC1200_GPIO_LED2		// LED2 on display card
-#define Board_GPIO_JOGSW			DRC1200_GPIO_JOGSW		// Jog wheel encoder push switch
 #define Board_RS422_RE_N			DRC1200_GPIO_RS422_RE	// RS422 Receiver Enable
 #define Board_RS422_DE			    DRC1200_GPIO_RS422_DE	// RS422 Transmitter Enable
 
@@ -75,6 +72,15 @@ extern "C" {
 #define Board_GPIO_U7_CS            DRC1200_GPIO_U7_CS      // MCP23S17T U7 CS
 #define Board_GPIO_U10_CS           DRC1200_GPIO_U10_CS     // MCP23S17T U10 CS
 #define Board_GPIO_U11_CS           DRC1200_GPIO_U11_CS     // MCP23S17T U11 CS
+
+#define Board_GPIO_LED1             DRC1200_GPIO_LED1       // LED1 on display card
+#define Board_GPIO_LED2             DRC1200_GPIO_LED2       // LED2 on display card
+
+#define Board_GPIO_JOGSW            DRC1200_GPIO_JOGSW      // Jog wheel encoder push switch
+#define Board_GPIO_DIP_SW1          DRC1200_GPIO_DIP_SW1    // config DIP switch 1
+#define Board_GPIO_DIP_SW2          DRC1200_GPIO_DIP_SW2    // config DIP switch 2
+#define Board_GPIO_DIP_SW3          DRC1200_GPIO_DIP_SW3    // config DIP switch 3
+#define Board_GPIO_DIP_SW4          DRC1200_GPIO_DIP_SW4    // config DIP switch 4
 
 #define Board_WATCHDOG0             DRC1200_WATCHDOG0
 

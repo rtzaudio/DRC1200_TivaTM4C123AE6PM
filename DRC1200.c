@@ -57,7 +57,7 @@
 #include "RAMPServer.h"
 
 /* Switch debounce time x 10ms*/
-#define DEBOUNCE    5
+#define DEBOUNCE_TIME   30
 
 /* Mailbox Handles created dynamically */
 
@@ -86,8 +86,6 @@ Int main()
     Mailbox_Params mboxParams;
     Error_Block    eb;
 
-    System_printf("enter main()\n");
-
     /* Call board init functions */
     Board_initGeneral();
     Board_initGPIO();
@@ -103,11 +101,10 @@ Int main()
 
     /* Read the DIP switch settings */
     g_sysData.dipSwitch = Board_readDIPSwitch();
-    System_printf("Config DIP Switch: %x\n", g_sysData.dipSwitch);
 
     /* Disable the LED's during startup up */
-    GPIO_write(Board_GPIO_LED1, Board_LED_OFF);
-    GPIO_write(Board_GPIO_LED2, Board_LED_OFF);
+    GPIO_write(Board_GPIO_LED1, Board_LED_OFF);     /* link status LED */
+    GPIO_write(Board_GPIO_LED2, Board_LED_ON);      /* power LED */
 
     /* Dessert RS-422 DE & RE pins */
     GPIO_write(DRC1200_GPIO_RS422_RE, PIN_HIGH);
@@ -160,8 +157,6 @@ Void MainButtonTask(UArg a0, UArg a1)
 {
     uint8_t     bits;
     uint16_t    switches;
-    uint32_t    debounce_xport = 0;
-    uint32_t    debounce_switches = 0;
     Error_Block eb;
     RAMP_MSG    msg;
     Task_Params taskParams;
@@ -199,7 +194,7 @@ Void MainButtonTask(UArg a0, UArg a1)
     for(;;)
 	{
         /*
-         *  Read the TRANSPORT button bits
+         *  Read the TRANSPORT buttons (8-bits)
          */
 
         ReadTransportSwitches(&bits);
@@ -208,54 +203,50 @@ Void MainButtonTask(UArg a0, UArg a1)
 
         if (temp)
         {
-            if (++debounce_xport >= DEBOUNCE)
-            {
-                debounce_xport = 0;
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_SWITCH;
+            msg.opcode   = OP_SWITCH_TRANSPORT;
+            msg.param1.U = (uint32_t)bits & 0xFF;
+            msg.param2.U = 0;
 
-                /* Debounced button press, send it to STC */
-                msg.type     = MSG_TYPE_SWITCH;
-                msg.opcode   = OP_SWITCH_TRANSPORT;
-                msg.param1.U = (uint32_t)bits & 0xFF;
-                msg.param2.U = 0;
+            /* Send the button press to to STC controller */
+            RAMP_Send_Message(&msg, 0);
 
-                /* Send the button press to to STC controller */
-                RAMP_Send_Message(&msg, 0);
+            /* Debounce switch time */
+            Task_sleep(DEBOUNCE_TIME);
 
-                /* Wait for all switches, except REC, to be released */
-                do {
-                    ReadTransportSwitches(&bits);
-                    Task_sleep(10);
-                } while (bits & ~(SW_REC));
-            }
+            /* Wait for all switches, except REC, to be released */
+            do {
+                ReadTransportSwitches(&bits);
+                Task_sleep(10);
+            } while (bits & ~(SW_REC));
         }
 
         /*
-         *  Read the LOCATE button bits
+         *  Read the LOCATE buttons (16-bits)
          */
 
         ReadButtonSwitches(&switches);
 
         if (switches)
         {
-            if (++debounce_switches >= DEBOUNCE)
-            {
-                debounce_switches = 0;
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_SWITCH;
+            msg.opcode   = OP_SWITCH_REMOTE;
+            msg.param1.U = (uint32_t)switches & 0xFFFF;
+            msg.param2.U = 0;
 
-                /* Debounced button press, send it to STC */
-                msg.type     = MSG_TYPE_SWITCH;
-                msg.opcode   = OP_SWITCH_REMOTE;
-                msg.param1.U = (uint32_t)switches & 0xFFFF;
-                msg.param2.U = 0;
+            /* Send the button press to to STC controller */
+            RAMP_Send_Message(&msg, 0);
 
-                /* Send the button press to to STC controller */
-                RAMP_Send_Message(&msg, 0);
+            /* Debounce switch time */
+            Task_sleep(DEBOUNCE_TIME);
 
-                /* Wait for all switches to be released */
-                do {
-                    ReadButtonSwitches(&switches);
-                    Task_sleep(10);
-                } while (switches);
-            }
+            /* Wait for all switches to be released */
+            do {
+                ReadButtonSwitches(&switches);
+                Task_sleep(10);
+            } while (switches);
         }
 
         Task_sleep(10);
