@@ -55,6 +55,7 @@
 #include "DRC1200.h"
 #include "IOExpander.h"
 #include "RAMPServer.h"
+#include "JogWheel.h"
 
 /* Switch debounce time x 10ms*/
 #define DEBOUNCE_TIME   30
@@ -157,6 +158,9 @@ Void MainButtonTask(UArg a0, UArg a1)
 {
     uint8_t     bits;
     uint16_t    switches;
+    uint32_t    velocity;
+    int32_t     direction;
+    uint32_t    sample = 0;
     Error_Block eb;
     RAMP_MSG    msg;
     Task_Params taskParams;
@@ -170,17 +174,18 @@ Void MainButtonTask(UArg a0, UArg a1)
     	System_flush();
     }
 
+    /* Initialize the jog wheel encoder */
+    Jogwheel_initialize();
+
     /* Start the remote communications service tasks */
-    if (!RAMP_Server_init())
-    {
+    if (!RAMP_Server_init()) {
         System_abort("RAMP Init Failed!\n");
     }
 
     Error_init(&eb);
     Task_Params_init(&taskParams);
     taskParams.stackSize = 1524;
-    taskParams.priority  = 5;
-
+    taskParams.priority  = 6;
     Task_create(RemoteTaskFxn, &taskParams, &eb);
 
     /* Ensure all button LED's are off */
@@ -210,7 +215,11 @@ Void MainButtonTask(UArg a0, UArg a1)
             msg.param2.U = 0;
 
             /* Send the button press to to STC controller */
-            RAMP_Send_Message(&msg, 0);
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(0) Failed\n");
+                System_flush();
+            }
 
             /* Debounce switch time */
             Task_sleep(DEBOUNCE_TIME);
@@ -237,7 +246,11 @@ Void MainButtonTask(UArg a0, UArg a1)
             msg.param2.U = 0;
 
             /* Send the button press to to STC controller */
-            RAMP_Send_Message(&msg, 0);
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(1) Failed\n");
+                System_flush();
+            }
 
             /* Debounce switch time */
             Task_sleep(DEBOUNCE_TIME);
@@ -248,6 +261,60 @@ Void MainButtonTask(UArg a0, UArg a1)
                 Task_sleep(10);
             } while (switches);
         }
+
+        /*
+         *  Read the jog wheel switch to see it it's pressed
+         */
+
+        if (!GPIO_read(Board_GPIO_JOGSW))
+        {
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_SWITCH;
+            msg.opcode   = OP_SWITCH_JOGWHEEL;
+            msg.param1.U = 0;
+            msg.param2.U = 0;
+
+            /* Send the button press to to STC controller */
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(2) Failed\n");
+                System_flush();
+            }
+            /* Debounce switch time */
+            Task_sleep(DEBOUNCE_TIME);
+
+            /* Wait for jog switch to be released */
+            do {
+                Task_sleep(10);
+            } while (!GPIO_read(Board_GPIO_JOGSW));
+        }
+
+        /*
+         *  Read jog wheel quadrature encoder for any motion.
+         */
+
+        if ((sample % 10) == 0)
+        {
+            Jogwheel_read(&velocity, &direction);
+
+            if (velocity)
+            {
+                /* Button pressed, send it to the STC */
+                msg.type     = MSG_TYPE_JOGWHEEL;
+                msg.opcode   = OP_JOGWHEEL_MOTION;
+                msg.param1.U = velocity;
+                msg.param2.I = direction;
+
+                /* Send the button press to to STC controller */
+                if (!RAMP_Send_Message(&msg, 10))
+                {
+                    System_printf("RAMP-Tx(3) Failed\n");
+                    System_flush();
+                }
+            }
+        }
+
+        ++sample;
 
         Task_sleep(10);
 	}

@@ -109,8 +109,8 @@ Bool RAMP_Server_init(void)
     UART_Params uartParams;
     Task_Params taskParams;
 
-    /* If DIPSW-4 is ON, then 500,000 baud, otherwise 250,000 baud */
-    uint32_t baudRate = (GPIO_read(Board_GPIO_DIP_SW4) == 0) ? 500000 : 250000;
+    /* If DIPSW-4 is ON, then 10 Mbps, otherwise 400 kbps */
+    uint32_t baudRate = (GPIO_read(Board_GPIO_DIP_SW2) == 0) ? 400000 : 250000;
 
     /*
      * Open the UART for RS-422 communications
@@ -120,7 +120,7 @@ Bool RAMP_Server_init(void)
 
     uartParams.readMode       = UART_MODE_BLOCKING;
     uartParams.writeMode      = UART_MODE_BLOCKING;
-    uartParams.readTimeout    = 1000;                   // 1 second read timeout
+    uartParams.readTimeout    = 2000;                   // 1 second read timeout
     uartParams.writeTimeout   = BIOS_WAIT_FOREVER;
     uartParams.readCallback   = NULL;
     uartParams.writeCallback  = NULL;
@@ -222,7 +222,7 @@ Bool RAMP_Server_init(void)
     Error_init(&eb);
     Task_Params_init(&taskParams);
     taskParams.stackSize = 700;
-    taskParams.priority  = 6;
+    taskParams.priority  = 8;
     taskParams.arg0      = (UArg)&g_svr;
     taskParams.arg1      = 0;
     Task_create((Task_FuncPtr)RAMPWriterTaskFxn, &taskParams, &eb);
@@ -230,7 +230,7 @@ Bool RAMP_Server_init(void)
     Error_init(&eb);
     Task_Params_init(&taskParams);
     taskParams.stackSize = 700;
-    taskParams.priority  = 6;
+    taskParams.priority  = 8;
     taskParams.arg0      = (UArg)&g_svr;
     taskParams.arg1      = 0;
     Task_create((Task_FuncPtr)RAMPReaderTaskFxn, &taskParams, &eb);
@@ -640,7 +640,11 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
         msg.param1  = *p++;     /* led/lamp bits */
         msg.param2  = *p++;     /* reserved */
 
-        Mailbox_post(g_mailboxRemote, &msg, 0);
+        if (!Mailbox_post(g_mailboxRemote, &msg, 0))
+        {
+            System_printf("Queue Display Refresh Failed!\n");
+            System_flush();
+        }
     }
     else
     {

@@ -165,8 +165,7 @@ extern "C" {
 #define SW_NEXT			(0x40 << 8)		// NEXT button switch
 #define SW_EDIT			(0x80 << 8)		// EDIT button switch
 
-/*
- * Processor GPIO Mapped Config DIP Switches. The lower
+/* Processor GPIO Mapped Config DIP Switches. The lower
  * 4-bits of PORT-G are inputs from config DIP switch.
  */
 
@@ -188,10 +187,11 @@ extern "C" {
  * Tiva Quadrature Encoder for Shuttle Jog Wheel
  ******************************************************************************/
 
-#define QEI_BASE_JOGWHEEL   QEI0_BASE   	/* QEI-0 is jog wheel encoder */
-
-#define QE_EDGES_PER_REV	(360 * 4)	/* 360 * 4 for four quad encoder edges */
-#define QE_TIMER_PERIOD		500000		/* period of 500,000 is 10ms at 50MHz  */
+/* Encoder is C14N32P-A3 from CUI Stack with 32 CPR */
+#define JOGWHEEL_BASE           QEI1_BASE
+#define JOGWHEEL_PPR            32
+#define JOGWHEEL_EDGES_PER_REV  (JOGWHEEL_PPR * 4)
+#define JOGWHEEL_TIMER_PERIOD   80000000
 
 /*!
  *  @def    DRC1200_GPIOName
