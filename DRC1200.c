@@ -58,7 +58,7 @@
 #include "JogWheel.h"
 
 /* Switch debounce time x 10ms*/
-#define DEBOUNCE_TIME   30
+#define DEBOUNCE_TIME   20
 
 /* Mailbox Handles created dynamically */
 
