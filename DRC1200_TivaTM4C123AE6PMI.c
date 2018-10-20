@@ -177,38 +177,39 @@ void DRC1200_initGeneral(void)
  */
 GPIO_PinConfig gpioPinConfigs[DRC1200_GPIOCOUNT] = {
 	/*=== Input pins ===*/
-    /* (0) PE0 : U10_INTA input */
+    /* (0) PE0 : DRC1200_GPIO_U10_INTA */
     GPIOTiva_PE_0 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
-    /* (1) PE1 : U10_INTB input */
+    /* (1) PE1 : DRC1200_GPIO_U10_INTB */
     GPIOTiva_PE_1 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
-	/* (2) PE3 : U7_INTA input */
+	/* (2) PE3 : DRC1200_GPIO_U7_INTA */
     GPIOTiva_PE_3 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
-	/* (3) PE3 : U7_INTB input */
+	/* (3) PE3 : DRC1200_GPIO_U7_INTB */
     GPIOTiva_PE_3 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
-	/* (4) PG4 : JOGSW input */
+	/* (4) PG4 : DRC1200_GPIO_JOGSW */
     GPIOTiva_PG_4 | GPIO_CFG_IN_NOPULL | GPIO_CFG_IN_INT_RISING,
-    /* (5) PG0 : DIP_SW1 input */
+    /* (5) PG0 : DRC1200_GPIO_DIP_SW1 */
     GPIOTiva_PG_0 | GPIO_CFG_IN_PU,
-    /* (6) PG1 : DIP_SW2 input */
+    /* (6) PG1 : DRC1200_GPIO_DIP_SW2 */
     GPIOTiva_PG_1 | GPIO_CFG_IN_PU,
-    /* (7) PG2 : DIP_SW3 input */
+    /* (7) PG2 : DRC1200_GPIO_DIP_SW3 */
     GPIOTiva_PG_2 | GPIO_CFG_IN_PU,
-    /* (8) PG3 : DIP_SW4 input */
+    /* (8) PG3 : DRC1200_GPIO_DIP_SW4 */
     GPIOTiva_PG_3 | GPIO_CFG_IN_PU,
     /*=== Output pins ===*/
-    /* (9) PC7 : LED1 output */
+    /* (9) PC7 : DRC1200_GPIO_LED1 */
     GPIOTiva_PC_7 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW,
-    /* (10) PG5 : LED2 output */
+    /* (10) PG5 : DRC1200_GPIO_LED2 */
     GPIOTiva_PG_5 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_LOW,
-    /* (11) PB0 : RS422 #RE output */
+    /* (11) PB0 : DRC1200_GPIO_RS422_RE */
     GPIOTiva_PB_0 | GPIO_CFG_OUT_STD | GPIO_CFG_OUT_HIGH,
-    /* (12) PB1 : RS422 DE output */
+    /* (12) PB1 : DRC1200_GPIO_RS422_DE */
     GPIOTiva_PB_1 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_LOW,
-	/* (13) PA3 : U11 CS */
+    /*=== CS Output pins ===*/
+	/* (13) PA3 : DRC1200_GPIO_U11_CS */
 	GPIOTiva_PA_3 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_HIGH,
-	/* (14) PF3 : U10 CS */
+	/* (14) PF3 : DRC1200_GPIO_U10_CS */
 	GPIOTiva_PF_3 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_HIGH,
-	/* (15) PB5 : U7 CS */
+	/* (15) PB5 : DRC1200_GPIO_U7_CS */
 	GPIOTiva_PB_5 | GPIO_CFG_OUTPUT | GPIO_CFG_OUT_HIGH,
 };
 

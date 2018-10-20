@@ -55,9 +55,9 @@ extern "C" {
 #define Board_I2C0					DRC1200_I2C0			// I2C CAT24C16WI EPROM
 #define Board_I2C1					DRC1200_I2C1			// I2C AT24CS01 EPROM/Serial#
 
-#define Board_SPI_U7                DRC1200_SPI2			// SSI-2 : U7  SPI MCP23S17SO Remote Control Switches
-#define Board_SPI_U10               DRC1200_SPI1			// SSI-1 : U10 SPI MCP23S17SO LED Driver and Transport Switches
-#define Board_SPI_U11               DRC1200_SPI0			// SSI-0 : U11 SPI MCP23S17SO LED Drivers
+#define Board_SPI_U7                DRC1200_SPI2			// SSI-2 : U7  SPI MCP23S17SO Transport Switches/LED's
+#define Board_SPI_U10               DRC1200_SPI1			// SSI-1 : U10 SPI MCP23S17SO Locator/Menu Switch Buttons
+#define Board_SPI_U11               DRC1200_SPI0			// SSI-0 : U11 SPI MCP23S17SO Locator/Menu Switch LED's
 
 #define Board_UART_RS422_REMOTE     DRC1200_UART0			// RS-422 driver on UART0
 

@@ -198,22 +198,22 @@ extern "C" {
  *  @brief  Enum of LED names on the DRC1200 dev board
  */
 typedef enum DRC1200_GPIOName {
-	DRC1200_GPIO_U10_INTA,		/* MCP23S17T I/O Expander Interrupt */
-    DRC1200_GPIO_U10_INTB,		/* MCP23S17T I/O Expander Interrupt */
-    DRC1200_GPIO_U7_INTA,		/* MCP23S17T I/O Expander Interrupt */
-    DRC1200_GPIO_U7_INTB,		/* MCP23S17T I/O Expander Interrupt */
-	DRC1200_GPIO_JOGSW,			/* Jog wheel encoder push switch */
-	DRC1200_GPIO_DIP_SW1,       /* config DIP switch 1 */
-	DRC1200_GPIO_DIP_SW2,       /* config DIP switch 2 */
-	DRC1200_GPIO_DIP_SW3,       /* config DIP switch 3 */
-	DRC1200_GPIO_DIP_SW4,       /* config DIP switch 4 */
-	DRC1200_GPIO_LED1,			/* LED1 on display card */
-	DRC1200_GPIO_LED2,			/* LED2 on display card */
-	DRC1200_GPIO_RS422_RE,		/* RS422 Receiver Enable */
-	DRC1200_GPIO_RS422_DE,		/* RS422 Transmitter Enable */
-    DRC1200_GPIO_U11_CS,        /* MCP23S17T U11 CS */
-    DRC1200_GPIO_U10_CS,        /* MCP23S17T U10 CS */
-    DRC1200_GPIO_U7_CS,         /* MCP23S17T U7 CS */
+	DRC1200_GPIO_U10_INTA,		/* 00 MCP23S17T I/O Expander Interrupt */
+    DRC1200_GPIO_U10_INTB,		/* 01 MCP23S17T I/O Expander Interrupt */
+    DRC1200_GPIO_U7_INTA,		/* 02 MCP23S17T I/O Expander Interrupt */
+    DRC1200_GPIO_U7_INTB,		/* 03 MCP23S17T I/O Expander Interrupt */
+	DRC1200_GPIO_JOGSW,			/* 04 Jog wheel encoder push switch */
+	DRC1200_GPIO_DIP_SW1,       /* 05 config DIP switch 1 */
+	DRC1200_GPIO_DIP_SW2,       /* 06 config DIP switch 2 */
+	DRC1200_GPIO_DIP_SW3,       /* 07 config DIP switch 3 */
+	DRC1200_GPIO_DIP_SW4,       /* 08 config DIP switch 4 */
+	DRC1200_GPIO_LED1,			/* 09 LED1 on display card */
+	DRC1200_GPIO_LED2,			/* 10 LED2 on display card */
+	DRC1200_GPIO_RS422_RE,		/* 11 RS422 Receiver Enable */
+	DRC1200_GPIO_RS422_DE,		/* 12 RS422 Transmitter Enable */
+    DRC1200_GPIO_U11_CS,        /* 13 MCP23S17T U11 CS (SSI0FSS) */
+    DRC1200_GPIO_U10_CS,        /* 14 MCP23S17T U10 CS (SSI1FSS) */
+    DRC1200_GPIO_U7_CS,         /* 15 MCP23S17T U7 CS  (SSI2FSS) */
             
     DRC1200_GPIOCOUNT
 } DRC1200_GPIOName;

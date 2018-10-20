@@ -80,7 +80,7 @@ static IOExpander_InitData initData_U10[] = {
 static IOExpander_InitData initData_U7[] = {
     { MCP_IOCONA, C_SEQOP },	/* Configure for byte mode */
     { MCP_IODIRA, 0x00 },	    /* Port A - all outputs to button LED's */
-    { MCP_IODIRB, 0xFF },		/* Port B - all inputs from button switches */
+    { MCP_IODIRB, 0x1F },		/* Port B - B0-B4 inputs from button switches */
     { MCP_IOPOLB, 0x1F }        /* Port B - invert polarity of switches */
 };
 
@@ -120,7 +120,7 @@ IOExpander_Handle IOExpander_open(unsigned int index)
 	spiParams.transferMode	= SPI_MODE_BLOCKING;
 	spiParams.mode 			= SPI_MASTER;
 	spiParams.frameFormat 	= SPI_POL0_PHA0;
-	spiParams.bitRate 		= 1000000;
+	spiParams.bitRate 		= 800000;
 	spiParams.dataSize 		= 8;
 
 	/* Open SPI driver to the IO Expander */
@@ -131,7 +131,7 @@ IOExpander_Handle IOExpander_open(unsigned int index)
 		return NULL;
 	}
 
-	/* Intialize the I/O expander */
+	/* Initialize the I/O expander */
 
 	initData = IOExpanderObjects[index].initData;
 
