@@ -94,6 +94,8 @@ static IOExpander_Object IOExpanderObjects[NUM_OBJ] = {
 	{ NULL, Board_SPI_U7,  Board_GPIO_U7_CS,  initData_U7,  IDSIZE(initData_U7)  },
 };
 
+static Semaphore_Handle g_semaSPI;
+
 /*****************************************************************************
  * Open the I/O expander and initialize it
  *****************************************************************************/
@@ -130,6 +132,9 @@ IOExpander_Handle IOExpander_open(unsigned int index)
 		System_printf("Error opening I/O Expander SPI port\n");
 		return NULL;
 	}
+
+	/* Semaphore to serialize SPI calls */
+	g_semaSPI = Semaphore_create(1, NULL, NULL);
 
 	/* Initialize the I/O expander */
 
@@ -316,13 +321,22 @@ static uint8_t s_maskTransportLED = 0;
 
 bool SetTransportLEDMask(uint8_t maskSet, uint8_t maskClear)
 {
-	/* Clear any bits in the clear mask */
-	s_maskTransportLED &= ~(maskClear);
+    bool success = FALSE;
 
-	/* Set any bits in the set mask */
-	s_maskTransportLED |= maskSet;
+    if (Semaphore_pend(g_semaSPI, TIMEOUT_SPI))
+    {
+        /* Clear any bits in the clear mask */
+        s_maskTransportLED &= ~(maskClear);
 
-	return MCP23S17_write(handleU7, MCP_GPIOA, s_maskTransportLED);
+        /* Set any bits in the set mask */
+        s_maskTransportLED |= maskSet;
+
+        success = MCP23S17_write(handleU7, MCP_GPIOA, s_maskTransportLED);
+
+        Semaphore_post(g_semaSPI);
+    }
+
+	return success;
 }
 
 uint8_t GetTransportLEDMask(void)
@@ -333,7 +347,16 @@ uint8_t GetTransportLEDMask(void)
 /* Read the current transport switch button states */
 bool ReadTransportSwitches(uint8_t* pSwitchBits)
 {
-	return MCP23S17_read(handleU7, MCP_GPIOB, pSwitchBits);
+    bool success = FALSE;
+
+    if (Semaphore_pend(g_semaSPI, TIMEOUT_SPI))
+    {
+        success = MCP23S17_read(handleU7, MCP_GPIOB, pSwitchBits);
+
+        Semaphore_post(g_semaSPI);
+    }
+
+	return success;
 }
 
 /*****************************************************************************

@@ -230,16 +230,6 @@ typedef enum DRC1200_I2CName {
 } DRC1200_I2CName;
 
 /*!
- *  @def    DRC1200_PWMName
- *  @brief  Enum of PWM names on the DRC1200 dev board
- */
-typedef enum DRC1200_PWMName {
-    DRC1200_PWM0 = 0,
-
-    DRC1200_PWMCOUNT
-} DRC1200_PWMName;
-
-/*!
  *  @def    DRC1200_SPIName
  *  @brief  Enum of SPI names on the DRC1200 dev board
  */
