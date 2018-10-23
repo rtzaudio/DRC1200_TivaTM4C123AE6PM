@@ -94,7 +94,13 @@ static IOExpander_Object IOExpanderObjects[NUM_OBJ] = {
 	{ NULL, Board_SPI_U7,  Board_GPIO_U7_CS,  initData_U7,  IDSIZE(initData_U7)  },
 };
 
-static Semaphore_Handle g_semaSPI;
+static Semaphore_Handle g_semaU11;
+static Semaphore_Handle g_semaU10;
+static Semaphore_Handle g_semaU7;
+
+static IOExpander_Handle handleU7;
+static IOExpander_Handle handleU10;
+static IOExpander_Handle handleU11;
 
 /*****************************************************************************
  * Open the I/O expander and initialize it
@@ -134,7 +140,9 @@ IOExpander_Handle IOExpander_open(unsigned int index)
 	}
 
 	/* Semaphore to serialize SPI calls */
-	g_semaSPI = Semaphore_create(1, NULL, NULL);
+	g_semaU11 = Semaphore_create(1, NULL, NULL);
+    g_semaU10 = Semaphore_create(1, NULL, NULL);
+    g_semaU7  = Semaphore_create(1, NULL, NULL);
 
 	/* Initialize the I/O expander */
 
@@ -284,10 +292,6 @@ void gpioU10IntB(void)
  * PUBLIC FUNCTIONS - Mutex synchronized and may be called by any task
  *****************************************************************************/
 
-static IOExpander_Handle handleU7;
-static IOExpander_Handle handleU10;
-static IOExpander_Handle handleU11;
-
 void IOExpander_initialize(void)
 {
 	/* Open the SPI port to U11 */
@@ -323,18 +327,16 @@ bool SetTransportLEDMask(uint8_t maskSet, uint8_t maskClear)
 {
     bool success = FALSE;
 
-    if (Semaphore_pend(g_semaSPI, TIMEOUT_SPI))
-    {
-        /* Clear any bits in the clear mask */
-        s_maskTransportLED &= ~(maskClear);
+    Semaphore_pend(g_semaU7, BIOS_WAIT_FOREVER);
 
-        /* Set any bits in the set mask */
-        s_maskTransportLED |= maskSet;
+    /* Clear any bits in the clear mask */
+    s_maskTransportLED &= ~(maskClear);
+    /* Set any bits in the set mask */
+    s_maskTransportLED |= maskSet;
 
-        success = MCP23S17_write(handleU7, MCP_GPIOA, s_maskTransportLED);
+    success = MCP23S17_write(handleU7, MCP_GPIOA, s_maskTransportLED);
 
-        Semaphore_post(g_semaSPI);
-    }
+    Semaphore_post(g_semaU7);
 
 	return success;
 }
@@ -347,14 +349,13 @@ uint8_t GetTransportLEDMask(void)
 /* Read the current transport switch button states */
 bool ReadTransportSwitches(uint8_t* pSwitchBits)
 {
-    bool success = FALSE;
+    bool success;
 
-    if (Semaphore_pend(g_semaSPI, TIMEOUT_SPI))
-    {
-        success = MCP23S17_read(handleU7, MCP_GPIOB, pSwitchBits);
+    Semaphore_pend(g_semaU7, BIOS_WAIT_FOREVER);
 
-        Semaphore_post(g_semaSPI);
-    }
+    success = MCP23S17_read(handleU7, MCP_GPIOB, pSwitchBits);
+
+    Semaphore_post(g_semaU7);
 
 	return success;
 }
@@ -368,6 +369,8 @@ static uint16_t s_maskButtonLED = 0;
 
 bool SetButtonLEDMask(uint16_t maskSet, uint16_t maskClear)
 {
+    Semaphore_pend(g_semaU11, BIOS_WAIT_FOREVER);
+
 	/* Clear any bits in the clear mask */
 	s_maskButtonLED &= ~(maskClear);
 
@@ -377,6 +380,8 @@ bool SetButtonLEDMask(uint16_t maskSet, uint16_t maskClear)
 	/* Update Port-A & Port-B outputs */
 	MCP23S17_write(handleU11, MCP_GPIOA, (uint8_t)(s_maskButtonLED & 0xFF));
 	MCP23S17_write(handleU11, MCP_GPIOB, (uint8_t)((s_maskButtonLED >> 8) & 0xFF));
+
+	Semaphore_post(g_semaU11);
 
 	return true;
 }
@@ -396,10 +401,14 @@ bool ReadButtonSwitches(uint16_t* pSwitchBits)
 	uint16_t portA;
 	uint16_t portB;
 
+	Semaphore_pend(g_semaU10, BIOS_WAIT_FOREVER);
+
 	MCP23S17_read(handleU10, MCP_GPIOA, (uint8_t*)&portA);
 	MCP23S17_read(handleU10, MCP_GPIOB, (uint8_t*)&portB);
 
 	*pSwitchBits = ((portA & 0xFF) | ((portB & 0xFF) << 8));
+
+	Semaphore_post(g_semaU10);
 
 	return true;
 }

@@ -96,8 +96,10 @@ Void RemoteTaskFxn(UArg arg0, UArg arg1)
 {
     uint32_t secs = 0;
     uint32_t packet = 0;
-    RemoteMessage msg;
     bool screensave = FALSE;
+    RemoteMessage msg;
+
+    static uint32_t ledMaskPrev = 0;
 
     while (true)
     {
@@ -136,11 +138,19 @@ Void RemoteTaskFxn(UArg arg0, UArg arg1)
 		{
 		case DISPLAY_REFRESH:
 		    /* Display buffer filled, update the display with new content */
-	        g_sysData.ledMask = msg.param1;
-	        /* Set the transport button LED's */
-	        SetTransportLEDMask((uint8_t)g_sysData.ledMask, 0xFF);
-	        /* Set the rest of the button LED's */
-	        SetButtonLEDMask((uint16_t)(g_sysData.ledMask >> 8), 0xFFFF);
+	        g_sysData.ledMask       = msg.param1;
+	        //g_sysData.transportMode = msg.param2;
+
+	        if (g_sysData.ledMask != ledMaskPrev)
+	        {
+	            ledMaskPrev = g_sysData.ledMask;
+
+                /* Set the transport button LED's */
+                SetTransportLEDMask((uint8_t)g_sysData.ledMask, 0xFF);
+
+                /* Set the rest of the button LED's */
+                SetButtonLEDMask((uint16_t)(g_sysData.ledMask >> 8), 0xFFFF);
+	        }
 	        /* Flush the buffer to the display */
 		    GrFlush(&g_context);
 		    break;
