@@ -56,6 +56,7 @@
 /* TI-RTOS Driver files */
 #include <ti/drivers/GPIO.h>
 #include <ti/drivers/SDSPI.h>
+#include <ti/drivers/SPI.h>
 #include <ti/drivers/I2C.h>
 #include <ti/drivers/UART.h>
 
@@ -70,17 +71,17 @@
 /* Graphiclib Header file */
 #include <grlib/grlib.h>
 #include <RAMPServer.h>
-#include <RemoteTask.h>
 #include "drivers/offscrmono.h"
 
 /* PMX42 Board Header file */
 #include "Board.h"
 #include "RAMP.h"
 #include "DRC1200.h"
+#include "IOExpander.h"
 
 /* External Data Items */
 extern SYSDATA g_sysData;
-extern Mailbox_Handle g_mailboxRemote;
+//extern Mailbox_Handle g_mailboxRemote;
 
 extern unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
 
@@ -110,7 +111,7 @@ Bool RAMP_Server_init(void)
     Task_Params taskParams;
 
     /* If DIPSW-4 is ON, then 10 Mbps, otherwise 400 kbps */
-    uint32_t baudRate = (GPIO_read(Board_GPIO_DIP_SW2) == 0) ? 400000 : 250000;
+    uint32_t baudRate = (GPIO_read(Board_GPIO_DIP_SW2) == 0) ? 1000000 : 400000;
 
     /*
      * Open the UART for RS-422 communications
@@ -396,26 +397,14 @@ Void RAMPWriterTaskFxn(UArg arg0, UArg arg1)
     while (TRUE)
     {
         /* Wait for a packet in the tx queue */
-        if (!Semaphore_pend(g_svr.txDataSem, 1000))
-        {
-            /* Timeout, nothing to send */
-            continue;
-        }
+        Semaphore_pend(g_svr.txDataSem, BIOS_WAIT_FOREVER);
 
         /* Get the message from txDataQue */
         elem = Queue_get(g_svr.txDataQue);
 
         /* Transmit the packet! */
-        if ((elem->fcb.type & FRAME_TYPE_MASK) == TYPE_MSG_USER)
-        {
-            textbuf = GrGetScreenBuffer();
-            textlen = GrGetScreenBufferSize();
-        }
-        else
-        {
-            textbuf = &(elem->msg);
-            textlen = sizeof(RAMP_MSG);
-        }
+        textbuf = &(elem->msg);
+        textlen = sizeof(RAMP_MSG);
 
         /* Transmit the packet frame out */
         RAMP_TxFrame(g_svr.uartHandle, &(elem->fcb), textbuf, textlen);
@@ -462,6 +451,9 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
         /* Wait for a free receive buffer if necessary */
         if (!Semaphore_pend(g_svr.rxFreeSem, 1000))
         {
+            System_printf("RAMPReaderTaskFxn() no free rx buffer\n");
+            System_flush();
+
             /* See if any packets have not been ACK'ed
              * and re-send if necessary.
              */
@@ -503,10 +495,15 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             {
                 g_svr.rxErrors++;
 
-                System_printf("RAMP_RxFrame Error %d\n", rc);
+                GPIO_toggle(Board_GPIO_LED2);
+
+                System_printf("RAMP_RxaFrame Error %d\n", rc);
                 System_flush();
             }
         }
+
+        //if ((elem->fcb.seqnum % 4) == 1)
+        //    GPIO_toggle(Board_GPIO_LED1);
 
         /* Packet received, save the sequence number received */
         g_svr.rxLastSeq = elem->fcb.seqnum;
@@ -514,7 +511,7 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
         /* Increment the total packets received count */
         g_svr.rxCount++;
 
-        /*Put message on rxDataQueue */
+        /* Put message on rxDataQueue */
         if (elem->fcb.type & F_PRIORITY)
             Queue_putHead(g_svr.rxDataQue, (Queue_Elem*)elem);
         else
@@ -627,7 +624,7 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
 {
     if ((fcb->type & FRAME_TYPE_MASK) == TYPE_MSG_USER)
     {
-        RemoteMessage msg;
+        static uint32_t ledMaskPrev = 0xFFFFFFFF;
 
         /* The OLED display buffer has been filled with display
          * data and ready to display. The buffer also contains
@@ -636,15 +633,23 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
          */
         uint32_t *p = (uint32_t*)&g_ucScreenBuffer[OLED_BUFSIZE];
 
-        msg.command = DISPLAY_REFRESH;
-        msg.param1  = *p++;     /* led/lamp bits */
-        msg.param2  = *p++;     /* reserved */
+        /* Display buffer filled, update the display with new content */
+        g_sysData.ledMask       = *p++;
+        g_sysData.transportMode = *p++;
 
-        if (!Mailbox_post(g_mailboxRemote, &msg, 0))
+        if (g_sysData.ledMask != ledMaskPrev)
         {
-            System_printf("Queue Display Refresh Failed!\n");
-            System_flush();
+            ledMaskPrev = g_sysData.ledMask;
+
+            /* Set the transport button LED's */
+            SetTransportLEDMask((uint8_t)g_sysData.ledMask, 0xFF);
+
+            /* Set the rest of the button LED's */
+            SetButtonLEDMask((uint16_t)(g_sysData.ledMask >> 8), 0xFFFF);
         }
+
+        /* Flush the buffer to the display */
+        GrFlush(&g_context);
     }
     else
     {

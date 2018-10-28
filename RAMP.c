@@ -222,6 +222,7 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
     uint16_t lsb;
     uint16_t msb;
     uint16_t framelen;
+    uint16_t rxtextlen;
     uint16_t rxcrc;
     uint16_t crc = 0;
     uint8_t *textbuf = (uint8_t*)text;
@@ -336,7 +337,7 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
 		lsb = (uint16_t)b;
 
 		/* Get the frame length received and validate it */
-		uint16_t rxtextlen = (size_t)((msb << 8) | lsb) & 0xFFFF;
+		rxtextlen = (size_t)((msb << 8) | lsb) & 0xFFFF;
 
 		/* The text length should be the frame overhead minus the preamble overhead
 		 * plus the text length specified in the received frame. If these don't match
@@ -356,26 +357,20 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
 
 		/* Read text data associated with the frame */
 
-		for (i=0; i < rxtextlen; i++)
-		{
-			if (UART_read(handle, &b, 1) != 1)
-				return ERR_SHORT_FRAME;
+        if (rxtextlen > textlen)
+        {
+            rc = ERR_RX_OVERFLOW;
+        }
+        else
+        {
+            /* Read the entire text block */
+            if (UART_read(handle, textbuf, rxtextlen) != rxtextlen)
+                return ERR_SHORT_FRAME;
 
-			/* update the CRC */
-			crc = CRC16Update(crc, b);
-
-			/* If we overflow, continue reading the packet
-			 * data, but don't store the data into the buffer.
-			 */
-			if (i >= textlen)
-			{
-				rc = ERR_RX_OVERFLOW;
-				continue;
-			}
-
-			if (textbuf)
-				*textbuf++ = b;
-		}
+            /* Sum the CRC for the text block */
+            for (i=0; i < rxtextlen; i++)
+                crc = CRC16Update(crc, *textbuf++);
+        }
     }
 
     /* Read the packet CRC MSB */

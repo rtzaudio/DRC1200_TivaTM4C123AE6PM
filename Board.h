@@ -44,7 +44,6 @@ extern "C" {
 #define Board_initI2C               DRC1200_initI2C
 #define Board_initSPI               DRC1200_initSPI
 #define Board_initUART              DRC1200_initUART
-#define Board_initQEI				DRC1200_initQEI
 #define Board_initWatchdog          DRC1200_initWatchdog
 
 #define Board_readDIPSwitch			DRC1200_readDIPSwitch
