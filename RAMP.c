@@ -189,12 +189,20 @@ int RAMP_TxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
 
 		if (textbuf && textlen)
 		{
+#if 0
 			for (i=0; i < textlen; i++)
 			{
 				b = *textbuf++;
 				crc = CRC16Update(crc, b);
 				UART_write(handle, &b, 1);
 			}
+#else
+            UART_write(handle, textbuf, textlen);
+
+            /* Continue sum the CRC for the text block */
+            for (i=0; i < textlen; i++)
+                crc = CRC16Update(crc, *textbuf++);
+#endif
 		}
     }
 
@@ -222,7 +230,6 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
     uint16_t lsb;
     uint16_t msb;
     uint16_t framelen;
-    uint16_t rxtextlen;
     uint16_t rxcrc;
     uint16_t crc = 0;
     uint8_t *textbuf = (uint8_t*)text;
@@ -337,7 +344,7 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
 		lsb = (uint16_t)b;
 
 		/* Get the frame length received and validate it */
-		rxtextlen = (size_t)((msb << 8) | lsb) & 0xFFFF;
+		uint16_t rxtextlen = (size_t)((msb << 8) | lsb) & 0xFFFF;
 
 		/* The text length should be the frame overhead minus the preamble overhead
 		 * plus the text length specified in the received frame. If these don't match
@@ -348,15 +355,17 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
 
 		/* If it's a user defined message, then it's a display buffer frame
 		 * and we read the data directly into the display memory buffer.
+		 * Note we have two extra bytes after the video buffer with the
+		 * button LED bitmask and transport mode.
 		 */
 		if (type == TYPE_MSG_USER)
 		{
-            textbuf = GrGetScreenBuffer();
-            textlen = GrGetScreenBufferSize();
+            textbuf = GrGetScreenBuffer(5);
+            textlen = 1024 + 8;
 		}
 
 		/* Read text data associated with the frame */
-
+#if 1
         if (rxtextlen > textlen)
         {
             rc = ERR_RX_OVERFLOW;
@@ -367,10 +376,32 @@ int RAMP_RxFrame(UART_Handle handle, RAMP_FCB* fcb, void* text, uint16_t textlen
             if (UART_read(handle, textbuf, rxtextlen) != rxtextlen)
                 return ERR_SHORT_FRAME;
 
-            /* Sum the CRC for the text block */
+            /* Continue sum the CRC for the text block */
             for (i=0; i < rxtextlen; i++)
                 crc = CRC16Update(crc, *textbuf++);
         }
+#else
+		for (i=0; i < rxtextlen; i++)
+		{
+			if (UART_read(handle, &b, 1) != 1)
+				return ERR_SHORT_FRAME;
+
+			/* update the CRC */
+			crc = CRC16Update(crc, b);
+
+			/* If we overflow, continue reading the packet
+			 * data, but don't store the data into the buffer.
+			 */
+			if (i >= textlen)
+			{
+				rc = ERR_RX_OVERFLOW;
+				continue;
+			}
+
+			if (textbuf)
+				*textbuf++ = b;
+		}
+#endif
     }
 
     /* Read the packet CRC MSB */

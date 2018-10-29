@@ -121,7 +121,7 @@ static uint32_t g_ulClockMS = 0;
 // by two extra 32 bit words the contain the button LED state flags.
 //*****************************************************************************
 
-unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
+unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE+16];
 
 //*****************************************************************************
 //
@@ -133,7 +133,7 @@ unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
 
 unsigned int SSD1309GetScreenBufferSize(void)
 {
-	return OLED_BUFSIZE;
+	return SCREEN_BUFSIZE;
 }
 
 //*****************************************************************************

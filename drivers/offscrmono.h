@@ -42,6 +42,6 @@ extern tContext g_context;
 
 void GrOffScreenMonoInit(void);
 int GrGetScreenBufferSize(void);
-unsigned char* GrGetScreenBuffer(void);
+unsigned char* GrGetScreenBuffer(size_t offset);
 
 #endif // __OFFSCRMONO_H__

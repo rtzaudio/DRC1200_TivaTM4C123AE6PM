@@ -375,9 +375,9 @@ int GrGetScreenBufferSize(void)
 //
 //*****************************************************************************
 
-unsigned char* GrGetScreenBuffer(void)
+unsigned char* GrGetScreenBuffer(size_t offset)
 {
-	return &g_ucScreenBuffer[0];
+	return &g_ucScreenBuffer[offset];
 }
 
 //*****************************************************************************

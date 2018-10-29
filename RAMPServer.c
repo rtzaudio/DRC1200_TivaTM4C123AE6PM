@@ -83,7 +83,7 @@
 extern SYSDATA g_sysData;
 //extern Mailbox_Handle g_mailboxRemote;
 
-extern unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE];
+extern unsigned char g_ucScreenBuffer[SCREEN_BUFSIZE+16];
 
 /* Static Function Prototypes */
 static RAMP_SVR_OBJECT g_svr;
@@ -110,8 +110,8 @@ Bool RAMP_Server_init(void)
     UART_Params uartParams;
     Task_Params taskParams;
 
-    /* If DIPSW-4 is ON, then 10 Mbps, otherwise 400 kbps */
-    uint32_t baudRate = (GPIO_read(Board_GPIO_DIP_SW2) == 0) ? 1000000 : 400000;
+    /* If DIPSW-4 is ON, then 1.5 Mbps, otherwise 400 kbps */
+    uint32_t baudRate = (GPIO_read(Board_GPIO_DIP_SW2) == 0) ? 1500000 : 400000;
 
     /*
      * Open the UART for RS-422 communications
@@ -342,13 +342,6 @@ Bool RAMP_post(RAMP_FCB *fcb, RAMP_MSG* msg, UInt32 timeout)
         /* get a message from the free queue */
         elem = Queue_dequeue(g_svr.txFreeQue);
 
-        /* Make sure that a valid pointer was returned. */
-        if (elem == (RAMP_ELEM*)(g_svr.txFreeQue))
-        {
-            Hwi_restore(key);
-            return FALSE;
-        }
-
         /* decrement the numFreeMsgs */
         g_svr.txNumFreeMsgs--;
 
@@ -439,6 +432,7 @@ Void RAMPWriterTaskFxn(UArg arg0, UArg arg1)
 Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
 {
     int rc;
+    int led_err_count = 0;
     UInt key;
     RAMP_ELEM* elem;
 
@@ -454,10 +448,19 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             System_printf("RAMPReaderTaskFxn() no free rx buffer\n");
             System_flush();
 
+
             /* See if any packets have not been ACK'ed
              * and re-send if necessary.
              */
             continue;
+        }
+
+        if (led_err_count)
+        {
+            --led_err_count;
+
+            if (!led_err_count)
+                GPIO_write(Board_GPIO_LED2, 0);
         }
 
         /* perform the dequeue and decrement numFreeMsgs atomically */
@@ -465,13 +468,6 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
 
         /* get a rx buffer from the free queue */
         elem = Queue_dequeue(g_svr.rxFreeQue);
-
-        /* Make sure that a valid pointer was returned. */
-        if (elem == (RAMP_ELEM*)(g_svr.rxFreeQue))
-        {
-            Hwi_restore(key);
-            continue;
-        }
 
         /* decrement the numFreeMsgs */
         g_svr.rxNumFreeMsgs--;
@@ -495,15 +491,17 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             {
                 g_svr.rxErrors++;
 
-                GPIO_toggle(Board_GPIO_LED2);
+                led_err_count = 10;
 
-                System_printf("RAMP_RxaFrame Error %d\n", rc);
-                System_flush();
+                GPIO_write(Board_GPIO_LED2, 1);
+
+                //System_printf("RAMP_RxFrame Error %d\n", rc);
+                //System_flush();
             }
         }
 
-        //if ((elem->fcb.seqnum % 4) == 1)
-        //    GPIO_toggle(Board_GPIO_LED1);
+        if (!(elem->fcb.seqnum % 8))
+            GPIO_toggle(Board_GPIO_LED1);
 
         /* Packet received, save the sequence number received */
         g_svr.rxLastSeq = elem->fcb.seqnum;
@@ -631,7 +629,8 @@ void RAMP_Handle_message(RAMP_FCB* fcb, RAMP_MSG* msg)
          * two extra words at the end of the display buffer that
          * contain the LED/lamp state bits for all the button LED's.
          */
-        uint32_t *p = (uint32_t*)&g_ucScreenBuffer[OLED_BUFSIZE];
+
+        uint32_t *p = (uint32_t*)(&g_ucScreenBuffer[1024+5]);
 
         /* Display buffer filled, update the display with new content */
         g_sysData.ledMask       = *p++;
