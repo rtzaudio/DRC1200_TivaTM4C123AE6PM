@@ -132,14 +132,17 @@ extern "C" {
 #define L_LOC8			(0x80 << 0)		// LOC8 button LED
 
 /* U11 PORT-B (Output) LED Bits */
-#define L_STORE			(0x01 << 8)		// STORE button LED
-#define L_CUE			(0x02 << 8)		// CUE button LED
-#define L_SET			(0x04 << 8)		// SET button LED
-#define L_ESC			(0x08 << 8)		// ESC button LED
-#define L_PREV			(0x10 << 8)		// PREV button LED
-#define L_MENU			(0x20 << 8)		// MENU button LED
-#define L_NEXT			(0x40 << 8)		// NEXT button LED
-#define L_EDIT			(0x80 << 8)		// EDIT button LED
+#define L_LOC0			(0x01 << 8)		// LOC0 button LED
+#define L_LOC9			(0x02 << 8)		// LOC9 button LED
+#define L_MENU			(0x04 << 8)		// SET button LED
+#define L_EDIT			(0x08 << 8)		// ESC button LED
+#define L_STORE			(0x10 << 8)		// PREV button LED
+#define L_ALT			(0x20 << 8)		// MENU button LED
+#define L_AUTO			(0x40 << 8)		// NEXT button LED
+#define L_CUE			(0x80 << 8)		// EDIT button LED
+
+#define L_LOC_MASK      (L_LOC1|L_LOC2|L_LOC3| L_LOC4| L_LOC5| \
+                         L_LOC6|L_LOC7| L_LOC8|L_LOC9|L_LOC0)
 
 /*
  * U10 is two 8-bit INPUT ports for reading button switches.
@@ -156,14 +159,17 @@ extern "C" {
 #define SW_LOC8			(0x80 << 0)		// LOC8 button switch
 
 /* U10 PORT-B (Input) Pushbutton Switch Bits */
-#define SW_STORE		(0x01 << 8)		// STORE button switch
-#define SW_CUE			(0x02 << 8)		// CUE button switch
-#define SW_SET			(0x04 << 8)		// SET button switch
-#define SW_ESC			(0x08 << 8)		// ESC button switch
-#define SW_PREV			(0x10 << 8)		// PREV button switch
-#define SW_MENU			(0x20 << 8)		// MENU button switch
-#define SW_NEXT			(0x40 << 8)		// NEXT button switch
-#define SW_EDIT			(0x80 << 8)		// EDIT button switch
+#define SW_LOC0		    (0x01 << 8)		// LOC0 button switch
+#define SW_LOC9			(0x02 << 8)		// LOC9 button switch
+#define SW_MENU			(0x04 << 8)		// MENU button switch
+#define SW_EDIT			(0x08 << 8)		// EDIT button switch
+#define SW_STORE		(0x10 << 8)		// STORE button switch
+#define SW_ALT 			(0x20 << 8)		// ALT button switch
+#define SW_AUTO			(0x40 << 8)		// AUTO button switch
+#define SW_CUE			(0x80 << 8)		// CUE button switch
+
+#define SW_LOC_MASK     (SW_LOC1|SW_LOC2|SW_LOC3|SW_LOC4|SW_LOC5| \
+                         SW_LOC6|SW_LOC7|SW_LOC8|SW_LOC9|SW_LOC0)
 
 /* Processor GPIO Mapped Config DIP Switches. The lower
  * 4-bits of PORT-G are inputs from config DIP switch.

@@ -372,7 +372,7 @@ Void MainButtonTask(UArg a0, UArg a1)
          */
 
         ReadTransportSwitches(&bits);
-
+        uint8_t recshift = (bits & SW_REC);
         uint8_t temp = bits & ~(SW_REC);
 
         if (temp)
@@ -412,7 +412,7 @@ Void MainButtonTask(UArg a0, UArg a1)
             msg.type     = MSG_TYPE_SWITCH;
             msg.opcode   = OP_SWITCH_REMOTE;
             msg.param1.U = (uint32_t)switches & 0xFFFF;
-            msg.param2.U = 0;
+            msg.param2.U = (uint32_t)recshift;
 
             /* Send the button press to to STC controller */
             if (!RAMP_Send_Message(&msg, 10))
