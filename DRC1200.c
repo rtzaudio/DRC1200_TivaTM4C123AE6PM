@@ -102,7 +102,7 @@ Int main()
 
     /* Disable the LED's during startup up */
     GPIO_write(Board_GPIO_LED1, Board_LED_ON);     /* link status LED */
-    GPIO_write(Board_GPIO_LED2, Board_LED_OFF);    /* power LED */
+    GPIO_write(Board_GPIO_LED2, Board_LED_OFF);    /* link error LED */
 
     /* Dessert RS-422 DE & RE pins */
     GPIO_write(DRC1200_GPIO_RS422_RE, PIN_HIGH);
@@ -136,6 +136,171 @@ Int main()
     BIOS_start();    /* does not return */
 
     return(0);
+}
+
+//*****************************************************************************
+//
+//*****************************************************************************
+
+Void MainButtonTask(UArg a0, UArg a1)
+{
+    uint8_t     bits;
+    uint16_t    switches;
+    uint32_t    velocity;
+    int32_t     direction;
+    uint32_t    sample = 0;
+    RAMP_MSG    msg;
+
+    /* Initialize the MCP23S17 I/O expanders */
+    IOExpander_initialize();
+
+    /* Read the globally unique serial number from EPROM */
+    if (!ReadSerialNumber(g_sysData.ui8SerialNumber)) {
+        System_printf("Read Serial Number Failed!\n");
+        System_flush();
+    }
+
+    /* Initialize the jog wheel encoder */
+    Jogwheel_initialize();
+
+    /* Ensure all button LED's are off */
+    SetTransportLEDMask(0, 0xFF);
+    SetButtonLEDMask(0, 0xFF);
+
+    /* Start the remote communications service tasks */
+    if (!RAMP_Server_init()) {
+        System_abort("RAMP Init Failed!\n");
+    }
+
+    /****************************************************************
+     * Enter the main application button processing loop forever.
+     ****************************************************************/
+
+    for(;;)
+    {
+        /*
+         *  Read the TRANSPORT control buttons (8-bits)
+         */
+
+        ReadTransportSwitches(&bits);
+
+        uint8_t recshift = (bits & SW_REC);
+        uint8_t temp = bits & ~(SW_REC);
+
+        if (temp)
+        {
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_SWITCH;
+            msg.opcode   = OP_SWITCH_TRANSPORT;
+            msg.param1.U = (uint32_t)bits & 0xFF;
+            msg.param2.U = 0;
+
+            /* Send the button press to to STC controller */
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(0) Failed\n");
+                System_flush();
+            }
+
+            /* Debounce switch time */
+            Task_sleep(DEBOUNCE_TIME);
+
+            /* Wait for all switches, except REC, to be released */
+            do {
+                ReadTransportSwitches(&bits);
+                Task_sleep(10);
+            } while (bits & ~(SW_REC));
+        }
+
+        /*
+         *  Read the LOCATE and MENU/MODE buttons (16-bits)
+         */
+
+        ReadButtonSwitches(&switches);
+
+        uint16_t switch_mask = switches & ~(L_ALT);
+
+        if (switch_mask)
+        {
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_SWITCH;
+            msg.opcode   = OP_SWITCH_REMOTE;
+            msg.param1.U = (uint32_t)switches & 0xFFFF;
+            msg.param2.U = (uint32_t)recshift;
+
+            /* Send the button press to to STC controller */
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(1) Failed\n");
+                System_flush();
+            }
+
+            /* Debounce switch time */
+            Task_sleep(DEBOUNCE_TIME);
+
+            /* Wait for all switches to be released */
+            do {
+                ReadButtonSwitches(&switches);
+                Task_sleep(10);
+            } while (switches & ~(L_ALT));
+        }
+
+        /*
+         *  Read the jog wheel switch to see it it's pressed
+         */
+
+        if (!GPIO_read(Board_GPIO_JOGSW))
+        {
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_SWITCH;
+            msg.opcode   = OP_SWITCH_JOGWHEEL;
+            msg.param1.U = 0;
+            msg.param2.U = 0;
+
+            /* Send the button press to to STC controller */
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(2) Failed\n");
+                System_flush();
+            }
+            /* Debounce switch time */
+            Task_sleep(DEBOUNCE_TIME);
+
+            /* Wait for jog switch to be released */
+            do {
+                Task_sleep(10);
+            } while (!GPIO_read(Board_GPIO_JOGSW));
+        }
+
+        /*
+         *  Read jog wheel quadrature encoder for any motion.
+         */
+
+        if ((sample % 10) == 0)
+        {
+            Jogwheel_read(&velocity, &direction);
+
+            if (velocity)
+            {
+                /* Button pressed, send it to the STC */
+                msg.type     = MSG_TYPE_JOGWHEEL;
+                msg.opcode   = OP_JOGWHEEL_MOTION;
+                msg.param1.U = velocity;
+                msg.param2.I = direction;
+
+                /* Send the button press to to STC controller */
+                if (!RAMP_Send_Message(&msg, 10))
+                {
+                    System_printf("RAMP-Tx(3) Failed\n");
+                    System_flush();
+                }
+            }
+        }
+
+        ++sample;
+
+        Task_sleep(10);
+    }
 }
 
 //*****************************************************************************
@@ -325,168 +490,6 @@ void InitSysDefaults(SYSPARMS* p)
     /* default servo parameters */
     p->magic        = MAGIC;
     p->version      = MAKEREV(FIRMWARE_VER, FIRMWARE_REV);
-}
-
-//*****************************************************************************
-//
-//*****************************************************************************
-
-Void MainButtonTask(UArg a0, UArg a1)
-{
-    uint8_t     bits;
-    uint16_t    switches;
-    uint32_t    velocity;
-    int32_t     direction;
-    uint32_t    sample = 0;
-    RAMP_MSG    msg;
-
-    /* Initialize the MCP23S17 I/O expanders */
-    IOExpander_initialize();
-
-    /* Read the globally unique serial number from EPROM */
-    if (!ReadSerialNumber(g_sysData.ui8SerialNumber)) {
-    	System_printf("Read Serial Number Failed!\n");
-    	System_flush();
-    }
-
-    /* Initialize the jog wheel encoder */
-    Jogwheel_initialize();
-
-    /* Ensure all button LED's are off */
-    SetTransportLEDMask(0, 0xFF);
-    SetButtonLEDMask(0, 0xFF);
-
-    /* Start the remote communications service tasks */
-    if (!RAMP_Server_init()) {
-        System_abort("RAMP Init Failed!\n");
-    }
-
-    /****************************************************************
-     * Enter the main application button processing loop forever.
-     ****************************************************************/
-
-    for(;;)
-	{
-        /*
-         *  Read the TRANSPORT buttons (8-bits)
-         */
-
-        ReadTransportSwitches(&bits);
-        uint8_t recshift = (bits & SW_REC);
-        uint8_t temp = bits & ~(SW_REC);
-
-        if (temp)
-        {
-            /* Button pressed, send it to the STC */
-            msg.type     = MSG_TYPE_SWITCH;
-            msg.opcode   = OP_SWITCH_TRANSPORT;
-            msg.param1.U = (uint32_t)bits & 0xFF;
-            msg.param2.U = 0;
-
-            /* Send the button press to to STC controller */
-            if (!RAMP_Send_Message(&msg, 10))
-            {
-                System_printf("RAMP-Tx(0) Failed\n");
-                System_flush();
-            }
-
-            /* Debounce switch time */
-            Task_sleep(DEBOUNCE_TIME);
-
-            /* Wait for all switches, except REC, to be released */
-            do {
-                ReadTransportSwitches(&bits);
-                Task_sleep(10);
-            } while (bits & ~(SW_REC));
-        }
-
-        /*
-         *  Read the LOCATE buttons (16-bits)
-         */
-
-        ReadButtonSwitches(&switches);
-
-        if (switches)
-        {
-            /* Button pressed, send it to the STC */
-            msg.type     = MSG_TYPE_SWITCH;
-            msg.opcode   = OP_SWITCH_REMOTE;
-            msg.param1.U = (uint32_t)switches & 0xFFFF;
-            msg.param2.U = (uint32_t)recshift;
-
-            /* Send the button press to to STC controller */
-            if (!RAMP_Send_Message(&msg, 10))
-            {
-                System_printf("RAMP-Tx(1) Failed\n");
-                System_flush();
-            }
-
-            /* Debounce switch time */
-            Task_sleep(DEBOUNCE_TIME);
-
-            /* Wait for all switches to be released */
-            do {
-                ReadButtonSwitches(&switches);
-                Task_sleep(10);
-            } while (switches);
-        }
-
-        /*
-         *  Read the jog wheel switch to see it it's pressed
-         */
-
-        if (!GPIO_read(Board_GPIO_JOGSW))
-        {
-            /* Button pressed, send it to the STC */
-            msg.type     = MSG_TYPE_SWITCH;
-            msg.opcode   = OP_SWITCH_JOGWHEEL;
-            msg.param1.U = 0;
-            msg.param2.U = 0;
-
-            /* Send the button press to to STC controller */
-            if (!RAMP_Send_Message(&msg, 10))
-            {
-                System_printf("RAMP-Tx(2) Failed\n");
-                System_flush();
-            }
-            /* Debounce switch time */
-            Task_sleep(DEBOUNCE_TIME);
-
-            /* Wait for jog switch to be released */
-            do {
-                Task_sleep(10);
-            } while (!GPIO_read(Board_GPIO_JOGSW));
-        }
-
-        /*
-         *  Read jog wheel quadrature encoder for any motion.
-         */
-
-        if ((sample % 10) == 0)
-        {
-            Jogwheel_read(&velocity, &direction);
-
-            if (velocity)
-            {
-                /* Button pressed, send it to the STC */
-                msg.type     = MSG_TYPE_JOGWHEEL;
-                msg.opcode   = OP_JOGWHEEL_MOTION;
-                msg.param1.U = velocity;
-                msg.param2.I = direction;
-
-                /* Send the button press to to STC controller */
-                if (!RAMP_Send_Message(&msg, 10))
-                {
-                    System_printf("RAMP-Tx(3) Failed\n");
-                    System_flush();
-                }
-            }
-        }
-
-        ++sample;
-
-        Task_sleep(10);
-	}
 }
 
 /* End-Of-File */
