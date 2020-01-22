@@ -460,7 +460,7 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             --led_err_count;
 
             if (!led_err_count)
-                GPIO_write(Board_GPIO_LED2, 0);
+                GPIO_write(Board_GPIO_LED2, Board_LED_OFF);
         }
 
         /* perform the dequeue and decrement numFreeMsgs atomically */
@@ -487,13 +487,18 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             if (rc == 0)
                 break;
 
-            if (rc > ERR_TIMEOUT)
+            if (rc == ERR_TIMEOUT)
+            {
+                GPIO_write(Board_GPIO_LED1, Board_LED_OFF);
+                GPIO_write(Board_GPIO_LED2, Board_LED_ON);
+            }
+            else
             {
                 g_svr.rxErrors++;
 
                 led_err_count = 10;
 
-                GPIO_write(Board_GPIO_LED2, 1);
+                GPIO_write(Board_GPIO_LED2, Board_LED_ON);
 
                 //System_printf("RAMP_RxFrame Error %d\n", rc);
                 //System_flush();

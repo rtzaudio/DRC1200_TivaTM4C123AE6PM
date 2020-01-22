@@ -167,6 +167,13 @@ Void MainButtonTask(UArg a0, UArg a1)
     SetTransportLEDMask(0, 0xFF);
     SetButtonLEDMask(0, 0xFF);
 
+    /* Display version/welcome info if DIP switch#1 on */
+    if (GPIO_read(Board_GPIO_DIP_SW1) == 0)
+    {
+        DisplayWelcome();
+        Task_sleep(1000);
+    }
+
     /* Start the remote communications service tasks */
     if (!RAMP_Server_init()) {
         System_abort("RAMP Init Failed!\n");
