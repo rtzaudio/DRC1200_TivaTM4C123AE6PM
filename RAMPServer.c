@@ -448,7 +448,6 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             System_printf("RAMPReaderTaskFxn() no free rx buffer\n");
             System_flush();
 
-
             /* See if any packets have not been ACK'ed
              * and re-send if necessary.
              */
@@ -491,6 +490,7 @@ Void RAMPReaderTaskFxn(UArg arg0, UArg arg1)
             {
                 GPIO_write(Board_GPIO_LED1, Board_LED_OFF);
                 GPIO_write(Board_GPIO_LED2, Board_LED_ON);
+                led_err_count = 10;
             }
             else
             {
