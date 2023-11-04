@@ -13,7 +13,8 @@
 #define _JOGWHEEL_H_
 
 void Jogwheel_initialize(void);
-
 void Jogwheel_read(uint32_t* velocity, int32_t* direction);
+void Jogwhell_setPosition(uint32_t position);
+uint32_t Jogwhell_getPosition(void);
 
 #endif /* _JOGWHEEL_H_ */

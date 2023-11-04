@@ -115,10 +115,9 @@ void Jogwheel_initialize(void)
     GPIOPinTypeQEI(GPIO_PORTC_BASE, GPIO_PIN_5);
 
     /* Configure the quadrature encoder to capture edges on both signals and
-     * maintain an absolute position by resetting on index pulses. Using a
-     * 32 CPR encoder at four edges per line, there are 1440 pulses per
-     * revolution; therefore set the maximum position to 1439 since the
-     * count is zero based.
+     * maintain an absolute position. Using a 32 CPR encoder at four edges
+     * per line, there are 128 pulses per revolution; therefore set the
+     * maximum position to 127 since the count is zero based.
      */
     QEIConfigure(JOGWHEEL_BASE,
                  QEI_CONFIG_CAPTURE_A_B | QEI_CONFIG_QUADRATURE | QEI_CONFIG_NO_RESET | QEI_CONFIG_NO_SWAP,
@@ -140,6 +139,9 @@ void Jogwheel_initialize(void)
     /* Enable both quadrature velocity capture interfaces. */
     QEIVelocityEnable(JOGWHEEL_BASE);
 
+    /* Set initial position to zero */
+    QEIPositionSet(JOGWHEEL_BASE, 0);
+
     /* Now we construct the interrupt handler objects for TI-RTOS */
 
     Error_init(&eb);
@@ -150,6 +152,20 @@ void Jogwheel_initialize(void)
     }
 
     //QEIIntEnable(JOGWHEEL_BASE, QEI_INTERROR | QEI_INTDIR);
+}
+
+/*****************************************************************************
+ * Read the jog wheel position or set new position.
+ *****************************************************************************/
+
+uint32_t Jogwhell_getPosition(void)
+{
+    return QEIPositionGet(JOGWHEEL_BASE);
+}
+
+void Jogwhell_setPosition(uint32_t position)
+{
+    return QEIPositionSet(JOGWHEEL_BASE, position);
 }
 
 /*****************************************************************************

@@ -144,10 +144,14 @@ Int main()
 
 Void MainButtonTask(UArg a0, UArg a1)
 {
-    uint8_t     bits;
+    uint8_t     buttons;
+    uint8_t     buttons_mask;
     uint16_t    switches;
+    uint16_t    switches_mask;
     uint32_t    velocity;
     int32_t     direction;
+    uint32_t    pos;
+    uint32_t    prev_pos;
     uint32_t    sample = 0;
     RAMP_MSG    msg;
 
@@ -183,23 +187,29 @@ Void MainButtonTask(UArg a0, UArg a1)
      * Enter the main application button processing loop forever.
      ****************************************************************/
 
+    pos = Jogwhell_getPosition();
+
     for(;;)
     {
         /*
          *  Read the TRANSPORT control buttons (8-bits)
          */
 
-        ReadTransportSwitches(&bits);
+        ReadTransportSwitches(&buttons);
 
-        uint8_t recshift = (bits & SW_REC);
-        uint8_t temp = bits & ~(SW_REC);
+        buttons_mask = buttons;
 
+        uint8_t recshift = (buttons & SW_REC);
+
+        uint8_t temp = buttons & ~(SW_REC);
+
+        /* Was a transport button switch pressed? */
         if (temp)
         {
             /* Button pressed, send it to the STC */
             msg.type     = MSG_TYPE_SWITCH;
             msg.opcode   = OP_SWITCH_TRANSPORT;
-            msg.param1.U = (uint32_t)bits & 0xFF;
+            msg.param1.U = (uint32_t)buttons & 0xFF;
             msg.param2.U = 0;
 
             /* Send the button press to to STC controller */
@@ -214,9 +224,9 @@ Void MainButtonTask(UArg a0, UArg a1)
 
             /* Wait for all switches, except REC, to be released */
             do {
-                ReadTransportSwitches(&bits);
+                ReadTransportSwitches(&buttons);
                 Task_sleep(10);
-            } while (bits & ~(SW_REC));
+            } while (buttons & ~(SW_REC));
         }
 
         /*
@@ -225,9 +235,10 @@ Void MainButtonTask(UArg a0, UArg a1)
 
         ReadButtonSwitches(&switches);
 
-        uint16_t switch_mask = switches & ~(L_ALT);
+        switches_mask = switches;
 
-        if (switch_mask)
+        /* Was a locator button switch pressed? */
+        if (switches & ~(SW_ALT))
         {
             /* Button pressed, send it to the STC */
             msg.type     = MSG_TYPE_SWITCH;
@@ -249,7 +260,7 @@ Void MainButtonTask(UArg a0, UArg a1)
             do {
                 ReadButtonSwitches(&switches);
                 Task_sleep(10);
-            } while (switches & ~(L_ALT));
+            } while (switches & ~(SW_ALT));
         }
 
         /*
@@ -261,8 +272,8 @@ Void MainButtonTask(UArg a0, UArg a1)
             /* Button pressed, send it to the STC */
             msg.type     = MSG_TYPE_SWITCH;
             msg.opcode   = OP_SWITCH_JOGWHEEL;
-            msg.param1.U = 0;
-            msg.param2.U = 0;
+            msg.param1.U = (uint32_t)switches_mask;
+            msg.param2.U = (uint32_t)buttons_mask;
 
             /* Send the button press to to STC controller */
             if (!RAMP_Send_Message(&msg, 10))
@@ -283,25 +294,32 @@ Void MainButtonTask(UArg a0, UArg a1)
          *  Read jog wheel quadrature encoder for any motion.
          */
 
-        if ((sample % 10) == 0)
+        pos = Jogwhell_getPosition();
+
+        /* Has the position changed? */
+        if (pos != prev_pos)
         {
+            /* Yes, read the velocity and direction */
             Jogwheel_read(&velocity, &direction);
 
-            if (velocity)
-            {
-                /* Button pressed, send it to the STC */
-                msg.type     = MSG_TYPE_JOGWHEEL;
-                msg.opcode   = OP_JOGWHEEL_MOTION;
-                msg.param1.U = velocity;
-                msg.param2.I = direction;
+            /* Button pressed, send it to the STC */
+            msg.type     = MSG_TYPE_JOGWHEEL;
+            msg.opcode   = OP_JOGWHEEL_MOTION;
+            msg.param1.U = velocity;
+            msg.param2.I = direction;
 
-                /* Send the button press to to STC controller */
-                if (!RAMP_Send_Message(&msg, 10))
-                {
-                    System_printf("RAMP-Tx(3) Failed\n");
-                    System_flush();
-                }
+            /* Send the button press to to STC controller */
+            if (!RAMP_Send_Message(&msg, 10))
+            {
+                System_printf("RAMP-Tx(3) Failed\n");
+                System_flush();
             }
+
+            //System_printf("%d %d\n", velocity, pos);
+            //System_flush();
+
+            /* update previous encoder position */
+            prev_pos = pos;
         }
 
         ++sample;
